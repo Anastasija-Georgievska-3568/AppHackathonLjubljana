@@ -41,7 +41,7 @@ final class ChallengeSession {
     var confidence: Double = 0.55   // 0..1
     var lastCallout: String?
     var elapsedSeconds: Int = 0
-    var maxTurns: Int = 8
+    var maxTurns: Int = 6
     var errorMessage: String?
 
     init(scenario: Scenario) {

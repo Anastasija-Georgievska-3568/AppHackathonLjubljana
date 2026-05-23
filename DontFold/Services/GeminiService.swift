@@ -56,7 +56,8 @@ actor GeminiService {
             return MockGemini.nextTurn(scenario: scenario, history: history)
         }
         let systemPrompt = Prompts.turnSystemPrompt(scenario: scenario)
-        let contents = Self.contents(from: history)
+        let trimmedHistory = Self.trimHistory(history, keepLast: 16)
+        let contents = Self.contents(from: trimmedHistory)
         let body = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: contents,
@@ -139,6 +140,17 @@ actor GeminiService {
                 parts: [.init(text: turn.text)]
             )
         }
+    }
+
+    /// Keep only the tail of the transcript. Drops leading AI turns so the
+    /// trimmed sequence still begins with a user message (Gemini convention).
+    private static func trimHistory(_ history: [Turn], keepLast: Int) -> [Turn] {
+        guard history.count > keepLast else { return history }
+        var trimmed = Array(history.suffix(keepLast))
+        while let first = trimmed.first, first.speaker == .ai, trimmed.count > 1 {
+            trimmed.removeFirst()
+        }
+        return trimmed
     }
 
     /// Models sometimes wrap JSON in ```json fences. Strip them.
