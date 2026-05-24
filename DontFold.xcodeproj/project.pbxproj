@@ -13,7 +13,9 @@
 		1FE9930050F7F3EB81BF2287 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F9CFFADC3D0E4B184D2431 /* Typography.swift */; };
 		22477B01AE93B466F7AB104C /* ChallengeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18EE071F23609B6A4ACCC24C /* ChallengeScreen.swift */; };
 		227FDC083425F831E319127C /* PressureMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98E1438A805B5409164595C /* PressureMeter.swift */; };
+		3101271FE803F10AAB7D362F /* DotEnv.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83919F562C0866276DF1EA43 /* DotEnv.swift */; };
 		31E5D4EFF8472F9CC5E559EC /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4078B4DCC6DB73F96F617BB /* GlassCard.swift */; };
+		4BEF8C3AE00D26C769B05606 /* .env in Resources */ = {isa = PBXBuildFile; fileRef = C1B943A1105124080E271282 /* .env */; };
 		52CFA8316B23F063ADD7A0FC /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2EA60526B9607E096E350A /* GeminiService.swift */; };
 		5E944CB56BE77AE1616CD2E6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B342B9C6E676266201AD8BB3 /* RootView.swift */; };
 		64B1B6B69C7653A41A782DBE /* Scenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = D888041D57080862446A1BB6 /* Scenario.swift */; };
@@ -49,14 +51,16 @@
 		2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		2D2EA60526B9607E096E350A /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 		2DAAF4AFC16B16D8A8AC44FB /* DontFoldApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DontFoldApp.swift; sourceTree = "<group>"; };
-		4FE02832EB203F9A0E7F846E /* DontFold.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DontFold.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FE02832EB203F9A0E7F846E /* DontFold.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DontFold.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		78732180061F4DA449BEB291 /* ChallengeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChallengeSession.swift; sourceTree = "<group>"; };
 		7F3D79FD0B2057EA39C2D470 /* ShareCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardScreen.swift; sourceTree = "<group>"; };
 		827D33FAF0D930FBFC38EFD2 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
+		83919F562C0866276DF1EA43 /* DotEnv.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotEnv.swift; sourceTree = "<group>"; };
 		A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultScreen.swift; sourceTree = "<group>"; };
 		AB361D0906640F0D04599C85 /* TypeOnText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeOnText.swift; sourceTree = "<group>"; };
 		B342B9C6E676266201AD8BB3 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		C0F9CFFADC3D0E4B184D2431 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		C1B943A1105124080E271282 /* .env */ = {isa = PBXFileReference; lastKnownFileType = text; path = .env; sourceTree = "<group>"; };
 		C97E2E4B936239D87135DDC7 /* Chip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chip.swift; sourceTree = "<group>"; };
 		D888041D57080862446A1BB6 /* Scenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scenario.swift; sourceTree = "<group>"; };
 		E18077662C9249D3897B680E /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
@@ -97,6 +101,7 @@
 		15BE7B1CFC620550DF2EB201 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				83919F562C0866276DF1EA43 /* DotEnv.swift */,
 				20C99E00033E636CC33488B4 /* GeminiConfig.swift */,
 				2D2EA60526B9607E096E350A /* GeminiService.swift */,
 				827D33FAF0D930FBFC38EFD2 /* SpeechRecognizer.swift */,
@@ -166,6 +171,7 @@
 		FCADBF5F26A7240C6BE5683E = {
 			isa = PBXGroup;
 			children = (
+				C1B943A1105124080E271282 /* .env */,
 				F1606176D4844077A5B628CF /* DontFold */,
 				2B15AE1C7488C544B577E9A8 /* Products */,
 			);
@@ -202,7 +208,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					B8D028684F9CCD8C1A383F08 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -231,6 +236,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4BEF8C3AE00D26C769B05606 /* .env in Resources */,
 				DCDA33EE237CF047EEA74685 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -246,6 +252,7 @@
 				0217482EE611264FBA3226B0 /* ChallengeSession.swift in Sources */,
 				F36321AA880089612694D840 /* Chip.swift in Sources */,
 				6EDA90C22BFD39012A64518E /* DontFoldApp.swift in Sources */,
+				3101271FE803F10AAB7D362F /* DotEnv.swift in Sources */,
 				E070AA924655FE70ADC7C8C0 /* GeminiConfig.swift in Sources */,
 				52CFA8316B23F063ADD7A0FC /* GeminiService.swift in Sources */,
 				31E5D4EFF8472F9CC5E559EC /* GlassCard.swift in Sources */,
@@ -281,6 +288,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = S84KD8654X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DontFold/Resources/Info.plist;
@@ -370,6 +378,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = S84KD8654X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DontFold/Resources/Info.plist;

@@ -60,29 +60,45 @@ struct ResultScreen: View {
     }
 
     private var verdictHero: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(result.scenarioTitle)
                 .font(DFFont.micro(11))
                 .foregroundStyle(Theme.textMuted)
                 .trackedCaps(1.6)
+                .lineLimit(2)
             Text(result.verdictTitle.uppercased())
-                .font(DFFont.display(46))
+                .font(DFFont.display(verdictTitleFontSize))
                 .foregroundStyle(DFGradient.hero)
-                .lineSpacing(-6)
+                .lineSpacing(2)
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.55)
                 .opacity(titleAppeared ? 1 : 0)
                 .offset(y: titleAppeared ? 0 : 20)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Auto-shrink the verdict title for longer text so it doesn't wrap into chaos.
+    private var verdictTitleFontSize: CGFloat {
+        let len = result.verdictTitle.count
+        switch len {
+        case 0...14: return 52
+        case 15...22: return 44
+        case 23...32: return 36
+        default: return 30
+        }
+    }
+
     private var vibeLine: some View {
         Text(result.verdictVibe)
-            .font(DFFont.headline(18))
+            .font(DFFont.headline(17))
             .foregroundStyle(.white)
-            .lineSpacing(2)
+            .lineSpacing(3)
+            .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .opacity(titleAppeared ? 1 : 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var statsRow: some View {

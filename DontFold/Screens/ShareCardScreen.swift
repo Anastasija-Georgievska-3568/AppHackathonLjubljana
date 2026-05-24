@@ -10,13 +10,15 @@ struct ShareCardScreen: View {
     var body: some View {
         ZStack {
             Theme.bg.ignoresSafeArea()
-            VStack(spacing: 16) {
+            VStack(spacing: 0) {
                 header
+                Spacer(minLength: 0)
                 ShareCardView(result: result, isCompact: false)
                     .aspectRatio(9.0/16.0, contentMode: .fit)
                     .padding(.horizontal, 16)
-                Spacer()
+                Spacer(minLength: 0)
                 actions
+                    .padding(.top, 8)
             }
             .padding(.top, 6)
             .padding(.bottom, 22)
@@ -149,6 +151,25 @@ struct ShareCardView: View {
         }
     }
 
+    private var shareTitleSize: CGFloat {
+        let len = result.verdictTitle.count
+        if isCompact {
+            switch len {
+            case 0...14: return 38
+            case 15...22: return 32
+            case 23...32: return 26
+            default: return 22
+            }
+        } else {
+            switch len {
+            case 0...14: return 86
+            case 15...22: return 72
+            case 23...32: return 58
+            default: return 46
+            }
+        }
+    }
+
     private var verdictBlock: some View {
         VStack(alignment: .leading, spacing: isCompact ? 10 : 18) {
             Text("VERDICT")
@@ -156,10 +177,12 @@ struct ShareCardView: View {
                 .foregroundStyle(Theme.accent)
                 .tracking(1.8)
             Text(result.verdictTitle.uppercased())
-                .font(.system(size: isCompact ? 36 : 78, weight: .black, design: .rounded))
+                .font(.system(size: shareTitleSize, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
-                .lineSpacing(isCompact ? -4 : -10)
+                .lineSpacing(2)
                 .multilineTextAlignment(.leading)
+                .minimumScaleFactor(0.5)
+                .lineLimit(4)
                 .fixedSize(horizontal: false, vertical: true)
             Text("\u{201C}\(result.oneLinerToShare)\u{201D}")
                 .font(.system(size: isCompact ? 13 : 22, weight: .semibold, design: .rounded))

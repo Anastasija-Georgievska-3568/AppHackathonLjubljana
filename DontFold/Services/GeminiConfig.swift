@@ -2,10 +2,12 @@ import Foundation
 
 enum GeminiConfig {
     /// Look in this order:
-    /// 1. `Info.plist` key `GEMINI_API_KEY`
-    /// 2. Environment variable `GEMINI_API_KEY`
-    /// 3. Local file at `~/Documents/dontfold_gemini_key.txt` (dev convenience)
+    /// 1. Bundled `.env` file (gitignored; populated from `.env.example`)
+    /// 2. `Info.plist` key `GEMINI_API_KEY`
+    /// 3. Environment variable `GEMINI_API_KEY` (Xcode scheme)
+    /// 4. Local file at `~/Documents/dontfold_gemini_key.txt` (dev convenience)
     static var apiKey: String? {
+        if let v = DotEnv["GEMINI_API_KEY"] { return v }
         if let v = Bundle.main.object(forInfoDictionaryKey: "GEMINI_API_KEY") as? String, !v.isEmpty, v != "$(GEMINI_API_KEY)" {
             return v
         }

@@ -8,6 +8,34 @@ struct AITurnResponse: Codable, Sendable {
     let confidenceDelta: Int
     let callout: String?
     let shouldEnd: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case say, pressureDelta, confidenceDelta, callout, shouldEnd
+    }
+
+    init(say: String, pressureDelta: Int, confidenceDelta: Int, callout: String?, shouldEnd: Bool) {
+        self.say = say
+        self.pressureDelta = pressureDelta
+        self.confidenceDelta = confidenceDelta
+        self.callout = callout
+        self.shouldEnd = shouldEnd
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        say = (try? c.decode(String.self, forKey: .say)) ?? ""
+        pressureDelta = Self.decodeFlexibleInt(c, key: .pressureDelta) ?? 0
+        confidenceDelta = Self.decodeFlexibleInt(c, key: .confidenceDelta) ?? 0
+        callout = try? c.decodeIfPresent(String.self, forKey: .callout)
+        shouldEnd = (try? c.decode(Bool.self, forKey: .shouldEnd)) ?? false
+    }
+
+    private static func decodeFlexibleInt(_ c: KeyedDecodingContainer<CodingKeys>, key: CodingKeys) -> Int? {
+        if let i = try? c.decode(Int.self, forKey: key) { return i }
+        if let d = try? c.decode(Double.self, forKey: key) { return Int(d.rounded()) }
+        if let s = try? c.decode(String.self, forKey: key), let i = Int(s) { return i }
+        return nil
+    }
 }
 
 struct AIVerdict: Codable, Sendable {
@@ -17,10 +45,63 @@ struct AIVerdict: Codable, Sendable {
     let highlights: [String]
     let stats: [VerdictStat]
 
+    enum CodingKeys: String, CodingKey {
+        case verdictTitle, verdictVibe, oneLinerToShare, highlights, stats
+    }
+
+    init(verdictTitle: String, verdictVibe: String, oneLinerToShare: String, highlights: [String], stats: [VerdictStat]) {
+        self.verdictTitle = verdictTitle
+        self.verdictVibe = verdictVibe
+        self.oneLinerToShare = oneLinerToShare
+        self.highlights = highlights
+        self.stats = stats
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        verdictTitle = (try? c.decode(String.self, forKey: .verdictTitle)) ?? ""
+        verdictVibe = (try? c.decode(String.self, forKey: .verdictVibe)) ?? ""
+        oneLinerToShare = (try? c.decode(String.self, forKey: .oneLinerToShare)) ?? ""
+        if let arr = try? c.decode([String].self, forKey: .highlights) {
+            highlights = arr
+        } else if let s = try? c.decode(String.self, forKey: .highlights) {
+            highlights = [s]
+        } else {
+            highlights = []
+        }
+        stats = (try? c.decode([VerdictStat].self, forKey: .stats)) ?? []
+    }
+
     struct VerdictStat: Codable, Sendable {
         let label: String
         let value: String
         let detail: String?
+
+        enum CodingKeys: String, CodingKey { case label, value, detail }
+
+        init(label: String, value: String, detail: String?) {
+            self.label = label
+            self.value = value
+            self.detail = detail
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            label = (try? c.decode(String.self, forKey: .label)) ?? ""
+            // `value` may come back as a String, Int, Double, or Bool — coerce all to String.
+            if let s = try? c.decode(String.self, forKey: .value) {
+                value = s
+            } else if let i = try? c.decode(Int.self, forKey: .value) {
+                value = String(i)
+            } else if let d = try? c.decode(Double.self, forKey: .value) {
+                value = String(d)
+            } else if let b = try? c.decode(Bool.self, forKey: .value) {
+                value = b ? "yes" : "no"
+            } else {
+                value = ""
+            }
+            detail = try? c.decodeIfPresent(String.self, forKey: .detail)
+        }
     }
 }
 
@@ -51,11 +132,25 @@ actor GeminiService {
 
     // MARK: - Turn (during conversation)
 
-    func nextTurn(scenario: Scenario, history: [Turn]) async throws -> AITurnResponse {
+    func nextTurn(scenario: Scenario, history: [Turn], isFinalTurn: Bool = false) async throws -> AITurnResponse {
+        // First turn: use the curated opening line. Gemini rejects requests
+        // with an empty `contents` array, and the opening is already in-character
+        // and free.
+        if history.isEmpty {
+            return AITurnResponse(
+                say: scenario.openingLine,
+                pressureDelta: 0,
+                confidenceDelta: 0,
+                callout: nil,
+                shouldEnd: false
+            )
+        }
         guard let key = GeminiConfig.apiKey else {
             return MockGemini.nextTurn(scenario: scenario, history: history)
         }
-        let systemPrompt = Prompts.turnSystemPrompt(scenario: scenario)
+        let systemPrompt = isFinalTurn
+            ? Prompts.turnSystemPrompt(scenario: scenario) + "\n\n" + Prompts.finalTurnAddendum(scenario: scenario)
+            : Prompts.turnSystemPrompt(scenario: scenario)
         let trimmedHistory = Self.trimHistory(history, keepLast: 16)
         let contents = Self.contents(from: trimmedHistory)
         let body = GeminiRequest(
@@ -64,18 +159,29 @@ actor GeminiService {
             generationConfig: .init(
                 temperature: 0.85,
                 topP: 0.9,
-                maxOutputTokens: 400,
+                maxOutputTokens: 700,
                 responseMimeType: "application/json",
                 responseSchema: turnSchema
             )
         )
-        let raw = try await call(body: body, apiKey: key)
+        let raw: String
+        do {
+            raw = try await call(body: body, apiKey: key)
+        } catch GeminiError.http(let code, let body) where code == 429 || (500...599).contains(code) {
+            // Rate-limited or server-side issue even after retries.
+            // Fall back to a local response so the session keeps moving.
+            #if DEBUG
+            print("[Gemini/turn] HTTP \(code) after retries — falling back to MockGemini. body: \(body.prefix(200))")
+            #endif
+            return MockGemini.nextTurn(scenario: scenario, history: history)
+        }
+        Self.debugLog("turn", raw: raw)
         do {
             let cleaned = Self.extractJSON(from: raw)
             let data = Data(cleaned.utf8)
             return try JSONDecoder().decode(AITurnResponse.self, from: data)
         } catch {
-            throw GeminiError.decoding("\(error.localizedDescription) — raw: \(raw.prefix(300))")
+            throw GeminiError.decoding("\(error.localizedDescription) — raw: \(raw.prefix(400))")
         }
     }
 
@@ -93,21 +199,41 @@ actor GeminiService {
             generationConfig: .init(
                 temperature: 0.9,
                 topP: 0.9,
-                maxOutputTokens: 700,
+                maxOutputTokens: 1200,
                 responseMimeType: "application/json",
                 responseSchema: verdictSchema
             )
         )
-        let raw = try await call(body: body, apiKey: key)
+        let raw: String
+        do {
+            raw = try await call(body: body, apiKey: key)
+        } catch GeminiError.http(let code, let body) where code == 429 || (500...599).contains(code) {
+            #if DEBUG
+            print("[Gemini/verdict] HTTP \(code) after retries — falling back to MockGemini. body: \(body.prefix(200))")
+            #endif
+            return MockGemini.finalVerdict(
+                scenario: scenario,
+                transcript: transcript,
+                finalPressure: finalPressure,
+                finalConfidence: finalConfidence
+            )
+        }
+        Self.debugLog("verdict", raw: raw)
         do {
             let cleaned = Self.extractJSON(from: raw)
             return try JSONDecoder().decode(AIVerdict.self, from: Data(cleaned.utf8))
         } catch {
-            throw GeminiError.decoding("\(error.localizedDescription) — raw: \(raw.prefix(300))")
+            throw GeminiError.decoding("\(error.localizedDescription) — raw: \(raw.prefix(400))")
         }
     }
 
     // MARK: - HTTP plumbing
+
+    /// HTTP statuses we should retry with backoff: rate limit (429) and transient
+    /// server errors (5xx). Everything else fails fast.
+    private static let retryableStatuses: Set<Int> = [429, 500, 502, 503, 504]
+    private static let maxRetries = 3
+    private static let baseBackoffSeconds: Double = 3.0
 
     private func call(body: GeminiRequest, apiKey: String) async throws -> String {
         let url = URL(string: "\(GeminiConfig.endpointBase)/\(GeminiConfig.model):generateContent?key=\(apiKey)")!
@@ -117,20 +243,50 @@ actor GeminiService {
         req.httpBody = try JSONEncoder().encode(body)
         req.timeoutInterval = 30
 
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse else {
-            throw GeminiError.http(0, "no response")
-        }
-        guard (200..<300).contains(http.statusCode) else {
+        var attempt = 0
+        while true {
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse else {
+                throw GeminiError.http(0, "no response")
+            }
+            if (200..<300).contains(http.statusCode) {
+                let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
+                guard let text = decoded.candidates?.first?.content?.parts?.compactMap({ $0.text }).joined(),
+                      !text.isEmpty else {
+                    throw GeminiError.empty
+                }
+                return text
+            }
+
+            // Retryable?
+            if Self.retryableStatuses.contains(http.statusCode), attempt < Self.maxRetries {
+                let delay = Self.backoffDelay(
+                    attempt: attempt,
+                    retryAfterHeader: http.value(forHTTPHeaderField: "Retry-After")
+                )
+                #if DEBUG
+                print("[Gemini] HTTP \(http.statusCode) — retrying in \(String(format: "%.1f", delay))s (attempt \(attempt + 1)/\(Self.maxRetries))")
+                #endif
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                attempt += 1
+                continue
+            }
+
+            // Final failure
             let body = String(data: data, encoding: .utf8) ?? "<no body>"
             throw GeminiError.http(http.statusCode, String(body.prefix(400)))
         }
-        let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
-        guard let text = decoded.candidates?.first?.content?.parts?.compactMap({ $0.text }).joined(),
-              !text.isEmpty else {
-            throw GeminiError.empty
+    }
+
+    private static func backoffDelay(attempt: Int, retryAfterHeader: String?) -> Double {
+        // Prefer server-provided Retry-After (in seconds) if present and parseable.
+        if let h = retryAfterHeader, let s = Double(h.trimmingCharacters(in: .whitespaces)) {
+            return min(max(s, 1.0), 30.0)
         }
-        return text
+        // Otherwise exponential: 3s, 7s, ~14s — with a touch of jitter.
+        let exp = baseBackoffSeconds * pow(2.0, Double(attempt))
+        let jitter = Double.random(in: 0...1.5)
+        return min(exp + jitter, 30.0)
     }
 
     private static func contents(from history: [Turn]) -> [GeminiRequest.Content] {
@@ -144,6 +300,12 @@ actor GeminiService {
 
     /// Keep only the tail of the transcript. Drops leading AI turns so the
     /// trimmed sequence still begins with a user message (Gemini convention).
+    private static func debugLog(_ tag: String, raw: String) {
+        #if DEBUG
+        print("[Gemini/\(tag)] raw response:\n\(raw)\n[/Gemini]")
+        #endif
+    }
+
     private static func trimHistory(_ history: [Turn], keepLast: Int) -> [Turn] {
         guard history.count > keepLast else { return history }
         var trimmed = Array(history.suffix(keepLast))
@@ -153,17 +315,76 @@ actor GeminiService {
         return trimmed
     }
 
-    /// Models sometimes wrap JSON in ```json fences. Strip them.
+    /// Pull a JSON object out of whatever the model returned.
+    ///
+    /// Handles, in order:
+    /// 1. Markdown code fences (```json, ```, ~~~)
+    /// 2. Preamble or postamble prose ("Sure! Here's the JSON: { ... } Let me know…")
+    /// 3. Truncated output where the closing braces got cut off (token limit hit) —
+    ///    counts braces and appends missing `}`s before returning.
+    /// 4. Stray trailing commas, BOM, smart-quoted braces.
     private static func extractJSON(from raw: String) -> String {
         var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if s.hasPrefix("```") {
+
+        // Strip BOM if present
+        if s.hasPrefix("\u{FEFF}") { s.removeFirst() }
+
+        // Strip code fences (any pattern: ``` ```json ~~~ etc.)
+        if s.hasPrefix("```") || s.hasPrefix("~~~") {
             if let firstNewline = s.firstIndex(of: "\n") {
                 s = String(s[s.index(after: firstNewline)...])
             }
-            if s.hasSuffix("```") {
-                s = String(s.dropLast(3))
-            }
+            if s.hasSuffix("```") { s.removeLast(3) }
+            if s.hasSuffix("~~~") { s.removeLast(3) }
+            s = s.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+
+        // Slice from the first `{` so any preamble prose is dropped.
+        guard let firstBrace = s.firstIndex(of: "{") else { return s }
+        s = String(s[firstBrace...])
+
+        // Walk the string and track real (unescaped, non-string) braces so we can
+        // (a) find the matching close-brace and drop any postamble, and
+        // (b) repair truncated output by appending missing closers.
+        var depth = 0
+        var inString = false
+        var escape = false
+        var endIndex: String.Index? = nil
+        var idx = s.startIndex
+        while idx < s.endIndex {
+            let ch = s[idx]
+            if escape {
+                escape = false
+            } else if ch == "\\" && inString {
+                escape = true
+            } else if ch == "\"" {
+                inString.toggle()
+            } else if !inString {
+                if ch == "{" { depth += 1 }
+                else if ch == "}" {
+                    depth -= 1
+                    if depth == 0 {
+                        endIndex = s.index(after: idx)
+                        break
+                    }
+                }
+            }
+            idx = s.index(after: idx)
+        }
+
+        if let endIndex {
+            // Have a complete object — drop anything after the matching brace.
+            s = String(s[..<endIndex])
+        } else if depth > 0 {
+            // Truncated. Close any unterminated string, then append the missing braces.
+            if inString { s.append("\"") }
+            s.append(String(repeating: "}", count: depth))
+        }
+
+        // Remove trailing comma before closing brace (common LLM mistake).
+        s = s.replacingOccurrences(of: ",}", with: "}")
+        s = s.replacingOccurrences(of: ",]", with: "]")
+
         return s.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -319,6 +540,31 @@ private enum Prompts {
         TONE for callouts: think Spotify Wrapped sass + Duolingo owl. Witty, knowing, NOT mean. NOT therapist-speak.
 
         Return JSON only — the schema is enforced.
+        """
+    }
+
+    static func finalTurnAddendum(scenario: Scenario) -> String {
+        """
+        ⚠️ FINAL TURN — THIS IS THE LAST EXCHANGE.
+
+        The user has no more turns. Deliver a DEFINITIVE in-character OUTCOME.
+
+        Outcome rules:
+        - Decide based on how the user actually performed across the whole conversation:
+            • Clear, confident, specific, didn't fold → they get what they wanted.
+            • Hedged, apologized, vague, lowered the ask, talked themselves out of it → they don't.
+            • Mixed → partial win (e.g. "we can do 65 not 75, take it or leave it").
+        - State the outcome plainly. Examples:
+            • "Alright — we can do the raise. 8k bump, effective next month."
+            • "Yeah… look, salary's not in the cards right now. Let's revisit in Q3."
+            • "I'll send Marko to look at it Tuesday between 2 and 4. Be home."
+            • "We'll remake the carbonara — give us 5 minutes."
+            • "I get it. We'll miss you tonight."
+        - 1–2 sentences MAX. In character.
+        - ABSOLUTELY NO QUESTIONS. No "does that work?" No "what do you think?"
+        - NO open-ended deflection ("we'll see", "let me check") unless that itself IS the (bad) outcome.
+        - `shouldEnd` MUST be true.
+        - `callout` should be null OR a final summary observation, not a new criticism.
         """
     }
 

@@ -21,8 +21,11 @@ Package.resolved
 
 # Secrets
 dontfold_gemini_key.txt
+.env
+.env.local
 *.env
 .env.*
+!.env.example
 secrets.plist
 
 # IDE
