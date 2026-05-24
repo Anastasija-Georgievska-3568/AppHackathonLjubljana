@@ -576,22 +576,50 @@ private enum Prompts {
         \(scenario.title) — \(scenario.blurb)
         Goal: \(scenario.userGoal)
 
-        Generate a recap card. Tone: Spotify Wrapped sass + internet humor + slight roast.
+        Generate a recap card. Tone: Spotify Wrapped sass + internet humor.
         Stylistically: bold, short, screenshottable, NOT corporate, NOT therapist-y, NOT mean.
 
+        ⚠️ CRITICAL — TONE MUST MATCH PERFORMANCE.
+        The user's final confidence and pressure scores tell you how they actually did.
+        Read them FIRST, then pick tone:
+
+        • Confidence ≥ 70 → CELEBRATE. Hype them. "Held the room", "main character energy",
+          "quietly devastating", "iconic". Witty, not gushing. NO roasting. NO criticism.
+          Highlights should celebrate specific strong moments ("Named the number without
+          flinching", "Didn't apologize once").
+
+        • Confidence 40–69 → MIXED. Wry, balanced. Acknowledge what worked AND what wobbled.
+          "Held the line — barely", "negotiated with yourself first, then won". Highlights
+          can be one positive + one observational.
+
+        • Confidence < 40 → ROAST (kindly). They folded. Lean into the sass.
+          "Recovering people pleaser", "folded on impact". Highlights call out specific
+          moments of caving.
+
+        ALSO consider pressure (high pressure = they got rattled, low pressure = they
+        stayed composed) when picking title and vibe.
+
         JSON fields:
-        - verdictTitle: 2-4 word title like "Recovering People Pleaser", "Professional Overexplainer",
-          "Folded On Impact", "Main Character Energy", "Held The Line", "Quietly Devastating".
-          Invent new ones if appropriate. ALL CAPS optional.
-        - verdictVibe: ONE sentence (max 22 words) capturing the energy. Punchy. Witty. Could land on Twitter.
-        - oneLinerToShare: ONE sentence under 80 chars, designed to be screenshotted/shared. Should land as a quote.
-        - highlights: 2–4 specific moments from the transcript, each a single line in roast-y observation form
-          (e.g. "Apologized 3 times before naming the actual issue").
-        - stats: 3-4 short stat chips with label + value. Examples:
-            {label: "FILLER WORDS", value: "7", detail: "above average"}
-            {label: "TIME TO FOLD", value: "0:42"}
-            {label: "FINAL VIBE", value: "Recovered"}.
-          Make them feel like Spotify-Wrapped factoids.
+        - verdictTitle: 2-4 word title. Pick from the right tier:
+          • CELEBRATE titles: "Main Character Energy", "Quietly Devastating", "Held The
+            Room", "Unbothered", "Did The Thing", "Won The Stare-Down".
+          • MIXED titles: "Held The Line (Barely)", "Mostly Composed", "Negotiated With
+            Yourself", "Polite Until Pressured".
+          • ROAST titles: "Recovering People Pleaser", "Professional Overexplainer",
+            "Folded On Impact", "Apology First Sentence Later", "Emotional Surrender".
+          Invent new ones in the right tier if appropriate.
+        - verdictVibe: ONE sentence (max 22 words) capturing the energy AT THAT
+          PERFORMANCE TIER. Punchy. Witty. Could land on Twitter.
+        - oneLinerToShare: ONE sentence under 80 chars, screenshottable. Match the tier.
+          For wins: brag-worthy. For mid: wryly funny. For fold: self-deprecating.
+        - highlights: 2–4 specific moments from the transcript, single lines. MATCH THE TIER.
+          For wins → celebrate ("Named the number without flinching").
+          For folds → call out ("Apologized 3 times before stating the issue").
+          For mid → mix one of each.
+        - stats: 3-4 short Spotify-Wrapped style chips with label + value. Examples:
+            {label: "FILLER WORDS", value: "2", detail: "controlled"}
+            {label: "TIME TO LAND", value: "0:42"}
+            {label: "FINAL VIBE", value: "Composed"}.
 
         Return JSON only.
         """
@@ -601,12 +629,19 @@ private enum Prompts {
         let convo = transcript.map { t in
             "\(t.speaker == .ai ? "AI" : "USER"): \(t.text)"
         }.joined(separator: "\n")
+        let p = Int(finalPressure * 100)
+        let c = Int(finalConfidence * 100)
+        let tier: String
+        if c >= 70 { tier = "CELEBRATE — the user held strong. Hype them." }
+        else if c >= 40 { tier = "MIXED — partial win. Wry, balanced tone." }
+        else { tier = "ROAST — they folded. Lean into the sass." }
         return """
+        Final pressure: \(p)/100
+        Final confidence: \(c)/100
+        → Tier for this recap: \(tier)
+
         Transcript:
         \(convo)
-
-        Final pressure: \(Int(finalPressure * 100))/100
-        Final confidence: \(Int(finalConfidence * 100))/100
         """
     }
 }

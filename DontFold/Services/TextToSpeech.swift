@@ -146,7 +146,19 @@ struct VoiceProfile {
     static func from(hint: String?) -> VoiceProfile {
         let hint = (hint ?? "").lowercased()
 
-        // Warm / friendly (hiring manager, server, friend)
+        // Interviewer / hiring manager — male, serious, professional.
+        // Checked BEFORE the warm bucket so "warm, lightly impatient" still routes here.
+        // → Jamie (Premium GB male), deliberate and authoritative.
+        if hint.contains("interview") || hint.contains("hiring") || hint.contains("impatient") {
+            return VoiceProfile(
+                rate: 0.46,
+                pitch: 0.91,
+                preferredLanguage: "en-GB",
+                preferredIdentifierSubstrings: ["jamie", "lee", "daniel", "evan"]
+            )
+        }
+
+        // Warm / friendly (server, friend)
         // → Matilda (Premium AU female, naturally warm)
         if hint.contains("warm") || hint.contains("friendly") || hint.contains("upbeat") || hint.contains("playful") {
             return VoiceProfile(
