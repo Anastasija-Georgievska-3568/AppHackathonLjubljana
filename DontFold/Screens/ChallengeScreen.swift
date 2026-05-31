@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// D1Convo — Live conversation screen.
+/// Header: "LIVE · TURN n/N" + bold scenario title + × chip.
+/// Two segmented meters (PRESSURE pink, CONFIDENCE ink).
+/// Alternating bubbles: them (gray, pink avatar dot) / you (pink, white text).
+/// Footer: dashed input pill + circular pink mic. Voice is primary.
 struct ChallengeScreen: View {
     let scenario: Scenario
     @Environment(Router.self) private var router
@@ -7,7 +12,6 @@ struct ChallengeScreen: View {
     @State private var session: ChallengeSession
     @State private var speech = SpeechRecognizer()
     @State private var inputText: String = ""
-    @State private var calloutVisible: Bool = false
     @State private var sending: Bool = false
     @State private var endingSession: Bool = false
     @FocusState private var textFocused: Bool
@@ -19,98 +23,46 @@ struct ChallengeScreen: View {
 
     var body: some View {
         ZStack {
-            AnimatedAuroraBackground(intensity: 0.4 + session.pressure * 0.6)
-            Color.black.opacity(session.pressure * 0.25).ignoresSafeArea()
+            Theme.bg.ignoresSafeArea()
 
-            VStack(spacing: 14) {
-                topBar
-                errorBanner
+            VStack(spacing: 10) {
+                header
                 metersRow
-
-                ZStack(alignment: .top) {
-                    conversation
-                    if let callout = session.lastCallout, calloutVisible {
-                        calloutBanner(callout)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .frame(maxHeight: .infinity)
-
+                errorBanner
+                conversation
                 bottomBar
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            .padding(.top, 6)
+            .padding(.bottom, 14)
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    Task { await abort() }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .background(Circle().fill(Color.white.opacity(0.10)))
-                }
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .task { await startSession() }
-        .onChange(of: session.lastCallout) { _, newValue in
-            guard newValue != nil else { return }
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                calloutVisible = true
-            }
-            Task {
-                try? await Task.sleep(nanoseconds: 7_500_000_000)
-                withAnimation(.easeOut(duration: 0.8)) { calloutVisible = false }
-            }
-        }
     }
 
     // MARK: - Sections
 
-    private var topBar: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [scenario.category.tint.opacity(0.35), scenario.category.tint.opacity(0.10)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                Circle().stroke(scenario.category.tint.opacity(0.45), lineWidth: 1)
-                Image(systemName: scenario.category.systemImage)
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(scenario.category.tint)
-            }
-            .frame(width: 34, height: 34)
-
+    private var header: some View {
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
+                Text("live · turn \(currentTurnDisplay)/\(session.maxTurns)")
+                    .font(DFFont.micro(10))
+                    .foregroundStyle(Theme.ink)
+                    .trackedCaps(1.6)
                 Text(scenario.title)
-                    .font(DFFont.headline(15))
-                    .foregroundStyle(.white)
+                    .font(DFFont.headline(16))
+                    .foregroundStyle(Theme.ink)
                     .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text("Turn \(currentTurnDisplay)")
-                        .font(DFFont.micro(10))
-                        .foregroundStyle(Theme.textSecondary)
-                        .trackedCaps(1.4)
-                    Text("·")
-                        .font(DFFont.micro(10))
-                        .foregroundStyle(Theme.textMuted)
-                    Text("of \(session.maxTurns)")
-                        .font(DFFont.micro(10))
-                        .foregroundStyle(Theme.textMuted)
-                        .trackedCaps(1.4)
-                }
             }
             Spacer()
-            modeBadge
+            Button {
+                Task { await abort() }
+            } label: {
+                GlyphChip(glyph: "×", filled: false, size: 26)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.vertical, 6)
     }
 
     private var currentTurnDisplay: Int {
@@ -118,95 +70,62 @@ struct ChallengeScreen: View {
         return min(session.maxTurns, session.userTurnCount + (inProgress ? 1 : 0))
     }
 
-    private var modeBadge: some View {
-        let live = GeminiConfig.hasKey
-        return HStack(spacing: 5) {
-            Circle()
-                .fill(live ? Theme.success : Theme.warning)
-                .frame(width: 6, height: 6)
-                .shadow(color: (live ? Theme.success : Theme.warning).opacity(0.7), radius: 4)
-            Text(live ? "LIVE" : "DEMO")
-                .font(DFFont.micro(9))
-                .foregroundStyle(live ? Theme.success : Theme.warning)
-                .trackedCaps(1.6)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(
-            Capsule().fill(Color.white.opacity(0.04))
-        )
-        .overlay(
-            Capsule().stroke((live ? Theme.success : Theme.warning).opacity(0.35), lineWidth: 1)
-        )
-    }
-
-    private var errorBanner: some View {
-        Group {
-            if let message = session.errorMessage {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(Theme.danger))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("AI ERROR")
-                            .font(DFFont.micro(9))
-                            .foregroundStyle(Theme.danger)
-                            .trackedCaps()
-                        Text(message)
-                            .font(DFFont.body(13))
-                            .foregroundStyle(.white)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer()
-                    Button {
-                        session.errorMessage = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(Theme.textSecondary)
-                            .padding(6)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Theme.bgElevated)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Theme.danger.opacity(0.5), lineWidth: 1)
-                )
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-    }
-
     private var metersRow: some View {
-        HStack(spacing: 16) {
-            PressureMeter(level: session.pressure)
-            ConfidenceMeter(level: session.confidence)
+        HStack(spacing: 10) {
+            PressureMeter(level: session.pressure).frame(maxWidth: .infinity, alignment: .leading)
+            ConfidenceMeter(level: session.confidence).frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 4)
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private var errorBanner: some View {
+        if let message = session.errorMessage {
+            HStack(alignment: .top, spacing: 8) {
+                Text("⚠")
+                    .font(DFFont.micro(12))
+                    .foregroundStyle(Theme.accent)
+                Text(message)
+                    .font(DFFont.body(12))
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button { session.errorMessage = nil } label: {
+                    Text("×")
+                        .font(DFFont.headline(14))
+                        .foregroundStyle(Theme.ink)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Theme.bgElevated)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Theme.ink, lineWidth: 1.5)
+            )
+        }
     }
 
     private var conversation: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 14) {
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 8) {
                     ForEach(session.turns) { turn in
                         bubble(for: turn)
                             .id(turn.id)
                     }
                     if sending {
-                        thinkingBubble
+                        composingBubble
+                            .id("composing")
                     }
-                    Color.clear.frame(height: 8).id("bottom")
+                    Color.clear.frame(height: 4).id("bottom")
                 }
-                .padding(.vertical, 4)
+                .padding(.top, 8)
             }
+            .frame(maxHeight: .infinity)
             .onChange(of: session.turns.count) { _, _ in
                 withAnimation(.spring(response: 0.4)) {
                     proxy.scrollTo("bottom", anchor: .bottom)
@@ -220,267 +139,179 @@ struct ChallengeScreen: View {
         }
     }
 
+    @ViewBuilder
     private func bubble(for turn: Turn) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            if turn.speaker == .ai {
-                aiAvatar
-                ZStack(alignment: .leading) {
-                    GlassCard(cornerRadius: 24, padding: 18, strokeColor: scenario.category.tint.opacity(0.30)) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(scenario.aiPersona.split(separator: "—").first.map(String.init)?.trimmingCharacters(in: .whitespaces).uppercased() ?? "AI")
-                                .font(DFFont.micro(9))
-                                .foregroundStyle(scenario.category.tint)
-                                .trackedCaps(1.6)
-                            if isLatestAI(turn) {
-                                TypeOnText(text: turn.text, font: DFFont.headline(19))
-                            } else {
-                                Text(turn.text)
-                                    .font(DFFont.headline(19))
-                                    .foregroundStyle(.white)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    // accent stripe — persona color
-                    Capsule()
-                        .fill(scenario.category.tint)
-                        .frame(width: 3)
-                        .padding(.vertical, 14)
-                        .padding(.leading, 0)
-                }
+        if turn.speaker == .ai {
+            HStack(alignment: .top, spacing: 6) {
+                Circle()
+                    .fill(Theme.accent)
+                    .frame(width: 18, height: 18)
+                themBubble(text: turn.text)
                 Spacer(minLength: 28)
-            } else {
+            }
+        } else {
+            HStack {
                 Spacer(minLength: 28)
-                VStack(alignment: .trailing, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Text("YOU")
-                            .font(DFFont.micro(9))
-                            .foregroundStyle(Theme.accent)
-                            .trackedCaps(1.6)
-                        Circle()
-                            .fill(Theme.accent)
-                            .frame(width: 4, height: 4)
-                    }
-                    Text(turn.text)
-                        .font(DFFont.body(16))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.trailing)
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 18)
-                        .background {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(Theme.accent.opacity(0.18))
-                            }
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(Theme.accent.opacity(0.45), lineWidth: 1)
-                        )
-                        .shadow(color: Theme.accent.opacity(0.25), radius: 18, x: 0, y: 6)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                youBubble(text: turn.text)
             }
         }
     }
 
-    private var aiAvatar: some View {
-        ZStack {
-            Circle().fill(
-                LinearGradient(colors: [scenario.category.tint, scenario.difficulty.tint],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
+    private func themBubble(text: String) -> some View {
+        Text(text)
+            .font(DFFont.body(16))
+            .foregroundStyle(Theme.ink)
+            .multilineTextAlignment(.leading)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Theme.bubbleGray)
             )
-            Image(systemName: "waveform")
-                .font(.system(size: 14, weight: .black))
-                .foregroundStyle(.white)
-        }
-        .frame(width: 36, height: 36)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var thinkingBubble: some View {
-        HStack(alignment: .top, spacing: 8) {
-            aiAvatar
-            GlassCard(cornerRadius: 22, padding: 16) {
-                HStack(spacing: 6) {
-                    ForEach(0..<3) { i in
-                        Circle()
-                            .fill(Theme.textSecondary)
-                            .frame(width: 6, height: 6)
-                            .scaleEffect(thinkingScale(i: i))
-                    }
-                }
-                .frame(height: 18)
-            }
-            Spacer(minLength: 24)
+    private func youBubble(text: String) -> some View {
+        Text(text)
+            .font(DFFont.body(16))
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.trailing)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Theme.accent)
+            )
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Dashed light-pink "...typing" bubble — shown while the AI's reply is
+    /// resolving. Matches the wireframe's dashed pink composing bubble.
+    private var composingBubble: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Circle()
+                .fill(Theme.accent)
+                .frame(width: 18, height: 18)
+            Text("...typing")
+                .font(DFFont.body(16))
+                .foregroundStyle(Theme.ink.opacity(0.5))
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Theme.accent3)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                        .foregroundStyle(Theme.ink)
+                )
+            Spacer(minLength: 28)
         }
         .transition(.opacity)
     }
 
-    @State private var thinkingPhase: CGFloat = 0
-    private func thinkingScale(i: Int) -> CGFloat {
-        let offset = CGFloat(i) * 0.25
-        let v = sin((thinkingPhase + offset) * .pi * 2)
-        return 0.85 + 0.35 * (v * 0.5 + 0.5)
-    }
-
-    private func calloutBanner(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle().fill(Theme.danger)
-                Image(systemName: "eye.fill")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 32, height: 32)
-            .shadow(color: Theme.danger.opacity(0.5), radius: 8, y: 2)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("CALLED OUT")
-                    .font(DFFont.micro(10))
-                    .foregroundStyle(Theme.danger)
-                    .trackedCaps(1.8)
-                Text(text)
-                    .font(DFFont.headline(15))
-                    .foregroundStyle(.white)
-                    .lineSpacing(1)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Theme.danger.opacity(0.10))
-            }
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [Theme.danger.opacity(0.7), Theme.accent.opacity(0.45)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        )
-        .shadow(color: Theme.danger.opacity(0.40), radius: 18, y: 6)
-        .padding(.horizontal, 4)
-        .padding(.top, 4)
-    }
-
     private var bottomBar: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             if case .userRecording = session.phase {
-                liveTranscriptCard
+                liveTranscriptRow
             }
-            HStack(spacing: 10) {
-                TextField("type if speaking feels like too much…", text: $inputText, axis: .vertical)
-                    .font(DFFont.body(15))
-                    .foregroundStyle(.white)
-                    .focused($textFocused)
-                    .lineLimit(1...4)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Theme.stroke, lineWidth: 1)
-                    )
-                    .disabled(!canInput)
-                    .onSubmit { Task { await sendTyped() } }
-
+            HStack(spacing: 8) {
+                inputPill
                 if !inputText.isEmpty {
                     Button {
                         Task { await sendTyped() }
                     } label: {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundStyle(.white)
-                            .frame(width: 48, height: 48)
-                            .background(Circle().fill(DFGradient.hero))
+                        ZStack {
+                            Circle()
+                                .fill(Theme.accent)
+                                .overlay(Circle().stroke(Theme.ink, lineWidth: 1.5))
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 48, height: 48)
                     }
                     .buttonStyle(.plain)
                     .transition(.scale.combined(with: .opacity))
+                } else {
+                    MicButton(
+                        isListening: session.phase == .userRecording,
+                        isDisabled: !canMic
+                    ) {
+                        Task { await toggleMic() }
+                    }
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.75), value: inputText.isEmpty)
-
-            MicButton(
-                isListening: session.phase == .userRecording,
-                isDisabled: !canMic
-            ) {
-                Task { await toggleMic() }
-            }
         }
     }
 
-    private var liveTranscriptCard: some View {
-        GlassCard(cornerRadius: 18, padding: 14, strokeColor: Theme.danger.opacity(0.45)) {
-            HStack(alignment: .top, spacing: 10) {
+    private var inputPill: some View {
+        TextField("type if speaking feels like too much…", text: $inputText, axis: .vertical)
+            .font(DFFont.body(15))
+            .foregroundStyle(Theme.ink)
+            .tint(Theme.accent)
+            .focused($textFocused)
+            .lineLimit(1...3)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                Capsule().fill(Theme.bg)
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                    .foregroundStyle(Theme.ink)
+            )
+            .disabled(!canInput)
+            .onSubmit { Task { await sendTyped() } }
+            .frame(maxWidth: .infinity)
+    }
+
+    private var liveTranscriptRow: some View {
+        GlassCard(cornerRadius: 12, padding: 10) {
+            HStack(alignment: .top, spacing: 8) {
                 Circle()
-                    .fill(Theme.danger)
+                    .fill(Theme.accent)
                     .frame(width: 8, height: 8)
-                    .padding(.top, 6)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("LISTENING")
+                    .padding(.top, 5)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("listening")
                         .font(DFFont.micro(9))
-                        .foregroundStyle(Theme.danger)
-                        .trackedCaps()
+                        .foregroundStyle(Theme.accent)
+                        .trackedCaps(1.6)
                     Text(speech.transcript.isEmpty ? "go on, say it." : speech.transcript)
-                        .font(DFFont.body(15))
-                        .foregroundStyle(.white)
+                        .font(DFFont.body(16))
+                        .foregroundStyle(Theme.ink)
                         .animation(.default, value: speech.transcript)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     // MARK: - State helpers
 
     private var canMic: Bool {
         switch session.phase {
-        case .awaitingUser, .userRecording: return true
-        default: return false
+        case .awaitingUser, .userRecording: true
+        default: false
         }
     }
 
     private var canInput: Bool {
         switch session.phase {
-        case .awaitingUser, .userTyping: return true
-        default: return false
+        case .awaitingUser, .userTyping: true
+        default: false
         }
-    }
-
-    private func isLatestAI(_ turn: Turn) -> Bool {
-        guard let lastAI = session.turns.last(where: { $0.speaker == .ai }) else { return false }
-        return lastAI.id == turn.id
     }
 
     // MARK: - Flow
 
     private func startSession() async {
         guard session.turns.isEmpty else { return }
-        await runThinkingPulse()
         await nextAITurn()
-    }
-
-    private func runThinkingPulse() async {
-        Task { @MainActor in
-            while !Task.isCancelled {
-                withAnimation(.linear(duration: 0.9)) { thinkingPhase += 1 }
-                try? await Task.sleep(nanoseconds: 900_000_000)
-            }
-        }
     }
 
     private func toggleMic() async {
@@ -521,9 +352,6 @@ struct ChallengeScreen: View {
     private func nextAITurn() async {
         sending = true
         defer { sending = false }
-        // The user has just spoken their Nth turn — if N equals maxTurns, this
-        // upcoming AI response is the FINAL line of the scene. We signal that
-        // to Gemini so it delivers a definitive outcome instead of another question.
         let isFinalTurn = session.userTurnCount >= session.maxTurns && !session.turns.isEmpty
         do {
             let resp = try await GeminiService.shared.nextTurn(
@@ -534,13 +362,19 @@ struct ChallengeScreen: View {
             session.applyDeltas(pressureDelta: resp.pressureDelta, confidenceDelta: resp.confidenceDelta)
             session.appendAI(resp.say, callout: resp.callout)
             session.phase = .aiSpeaking
-            Task.detached { @MainActor in
-                await TextToSpeech.shared.speak(resp.say, voiceHint: self.scenario.aiVoiceHint)
-            }
-            if resp.shouldEnd || session.userTurnCount >= session.maxTurns {
-                try? await Task.sleep(nanoseconds: 900_000_000)
-                await finalize()
+
+            let isFinal = resp.shouldEnd || session.userTurnCount >= session.maxTurns
+            if isFinal {
+                async let tts: Void = TextToSpeech.shared.speak(resp.say, voiceHint: scenario.aiVoiceHint)
+                async let verdictTask = preflightVerdict()
+                _ = await tts
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                let verdict = await verdictTask
+                await navigateToResult(with: verdict)
             } else {
+                Task.detached { @MainActor in
+                    await TextToSpeech.shared.speak(resp.say, voiceHint: self.scenario.aiVoiceHint)
+                }
                 session.phase = .awaitingUser
             }
         } catch {
@@ -549,32 +383,28 @@ struct ChallengeScreen: View {
         }
     }
 
-    private func finalize() async {
-        guard !endingSession else { return }
-        endingSession = true
-        sending = true
-
-        let verdict: AIVerdict
+    private func preflightVerdict() async -> AIVerdict {
         do {
-            verdict = try await GeminiService.shared.finalVerdict(
+            return try await GeminiService.shared.finalVerdict(
                 scenario: scenario,
                 transcript: session.turns,
                 finalPressure: session.pressure,
                 finalConfidence: session.confidence
             )
         } catch {
-            // Verdict call failed — surface the error briefly, then fall back to
-            // a locally-built verdict so the user always reaches the result screen.
             session.errorMessage = "Verdict fallback: \(error.localizedDescription)"
-            verdict = MockGemini.finalVerdict(
+            return MockGemini.finalVerdict(
                 scenario: scenario,
                 transcript: session.turns,
                 finalPressure: session.pressure,
                 finalConfidence: session.confidence
             )
         }
+    }
 
-        sending = false
+    private func navigateToResult(with verdict: AIVerdict) async {
+        guard !endingSession else { return }
+        endingSession = true
         let result = SessionResult(
             scenarioTitle: scenario.title,
             scenarioId: scenario.id,
@@ -589,7 +419,6 @@ struct ChallengeScreen: View {
             finalConfidence: session.confidence,
             transcript: session.turns
         )
-        await TextToSpeech.shared.stop()
         router.push(.result(result))
     }
 

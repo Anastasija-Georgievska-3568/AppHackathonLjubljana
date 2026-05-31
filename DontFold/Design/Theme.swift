@@ -1,23 +1,28 @@
 import SwiftUI
 
+/// Hot Girl CEO palette: cream surface, ink ("near-black") text & borders,
+/// hot-pink accent, soft-pink highlight fills. Hard outlines over shadows.
 enum Theme {
-    static let bg = Color(hex: 0x07060B)
-    static let bgElevated = Color(hex: 0x121119)
-    static let surface = Color(hex: 0x191824)
-    static let surfaceHi = Color(hex: 0x22202F)
+    static let bg          = Color(hex: 0xFFFDF7) // cream
+    static let bgElevated  = Color(hex: 0xFFE6F0) // soft pink (highlight card fill)
+    static let surface     = Color(hex: 0xFFFDF7)
+    static let surfaceHi   = Color(hex: 0xFFE6F0)
 
-    static let accent = Color(hex: 0xFF3B6B)      // hot pink
-    static let accent2 = Color(hex: 0xA66CFF)     // violet
-    static let accent3 = Color(hex: 0x4DE3FF)     // electric cyan
-    static let success = Color(hex: 0x5BFFA8)
-    static let warning = Color(hex: 0xFFC857)
-    static let danger = Color(hex: 0xFF3551)
+    static let ink         = Color(hex: 0x0D0D0D)
+    static let accent      = Color(hex: 0xFF2D87) // hot pink
+    static let accent2     = Color(hex: 0xFF7AB6) // softer pink
+    static let accent3     = Color(hex: 0xFFD6E6) // dashed-bubble pink
+    static let success     = Color(hex: 0xFF2D87)
+    static let warning     = Color(hex: 0xC41E3A)
+    static let danger      = Color(hex: 0xFF2D87)
 
-    static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.68)
-    static let textMuted = Color.white.opacity(0.42)
-    static let stroke = Color.white.opacity(0.10)
-    static let strokeHi = Color.white.opacity(0.18)
+    static let textPrimary   = Color(hex: 0x0D0D0D)
+    static let textSecondary = Color(hex: 0x33312D)
+    static let textMuted     = Color(hex: 0x33312D).opacity(0.55)
+    static let stroke        = Color(hex: 0x0D0D0D).opacity(0.85)
+    static let strokeHi      = Color(hex: 0x0D0D0D)
+
+    static let bubbleGray    = Color(hex: 0xF0F0F0)
 }
 
 extension Color {

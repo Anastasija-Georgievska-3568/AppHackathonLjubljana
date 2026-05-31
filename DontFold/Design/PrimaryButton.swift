@@ -1,8 +1,11 @@
 import SwiftUI
 
+/// Hot Girl CEO primary CTA. Flat pink card with ink outline. Reads as a
+/// "card you tap" — matches the wireframe's full-width footer CTA.
 struct PrimaryButton: View {
     let title: String
     var systemImage: String? = nil
+    /// Kept for API compatibility; ignored — Hot Girl CEO uses solid hot pink.
     var gradient: LinearGradient = DFGradient.hero
     var isLoading: Bool = false
     var fullWidth: Bool = true
@@ -15,33 +18,32 @@ struct PrimaryButton: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
                         .progressViewStyle(.circular)
                         .tint(.white)
                 } else if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.system(size: 18, weight: .black))
+                        .font(.system(size: 14, weight: .black))
                 }
                 Text(title)
-                    .font(DFFont.headline(18))
+                    .font(DFFont.headline(15))
                     .trackedCaps(1.2)
             }
             .foregroundStyle(.white)
             .frame(maxWidth: fullWidth ? .infinity : nil)
-            .padding(.vertical, 18)
-            .padding(.horizontal, 28)
-            .background {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(gradient)
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-            }
-            .shadow(color: Theme.accent.opacity(0.45), radius: 24, x: 0, y: 12)
-            .scaleEffect(pressed ? 0.96 : 1.0)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 18)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Theme.accent)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Theme.ink, lineWidth: 1.5)
+            )
+            .scaleEffect(pressed ? 0.97 : 1.0)
         }
         .buttonStyle(.plain)
         .simultaneousGesture(
@@ -56,6 +58,7 @@ struct PrimaryButton: View {
     }
 }
 
+/// Secondary action — outlined cream pill with ink text. Lower-emphasis CTA.
 struct GhostButton: View {
     let title: String
     var systemImage: String? = nil
@@ -63,20 +66,23 @@ struct GhostButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                 }
                 Text(title)
-                    .font(DFFont.body(14))
-                    .trackedCaps(1.0)
+                    .font(DFFont.headline(13))
+                    .trackedCaps(1.2)
             }
-            .foregroundStyle(Theme.textSecondary)
-            .padding(.vertical, 12)
+            .foregroundStyle(Theme.ink)
+            .padding(.vertical, 11)
             .padding(.horizontal, 18)
             .background(
-                Capsule().stroke(Theme.stroke, lineWidth: 1)
+                Capsule().fill(Theme.bg)
+            )
+            .overlay(
+                Capsule().stroke(Theme.ink, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)

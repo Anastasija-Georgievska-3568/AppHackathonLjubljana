@@ -232,8 +232,10 @@ actor GeminiService {
     /// HTTP statuses we should retry with backoff: rate limit (429) and transient
     /// server errors (5xx). Everything else fails fast.
     private static let retryableStatuses: Set<Int> = [429, 500, 502, 503, 504]
-    private static let maxRetries = 3
-    private static let baseBackoffSeconds: Double = 3.0
+    /// Two retries (so up to 3 attempts total) — keeps the demo moving when
+    /// rate-limited; on persistent 429 the call site falls back to MockGemini.
+    private static let maxRetries = 2
+    private static let baseBackoffSeconds: Double = 2.0
 
     private func call(body: GeminiRequest, apiKey: String) async throws -> String {
         let url = URL(string: "\(GeminiConfig.endpointBase)/\(GeminiConfig.model):generateContent?key=\(apiKey)")!

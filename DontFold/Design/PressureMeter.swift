@@ -1,80 +1,62 @@
 import SwiftUI
 
+/// Segmented 5-pip meter — Hot Girl CEO direction. Each pip is a small
+/// ink-outlined rectangle that fills with `tint` when "on". `PressureMeter`
+/// uses pink; `ConfidenceMeter` uses ink.
+private struct SegmentedBar: View {
+    var level: Double           // 0…1
+    var tint: Color
+    var segments: Int = 5
+
+    var filled: Int {
+        let clamped = max(0, min(1, level))
+        return Int(round(clamped * Double(segments)))
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<segments, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(i < filled ? tint : Theme.bg)
+                    .frame(height: 10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .stroke(Theme.ink, lineWidth: 1.2)
+                    )
+            }
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: filled)
+    }
+}
+
 struct PressureMeter: View {
-    /// 0.0 ... 1.0
+    /// 0.0 … 1.0
     var level: Double
     var label: String = "Pressure"
 
-    @State private var pulse = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(label)
-                    .font(DFFont.micro(10))
-                    .foregroundStyle(level > 0.66 ? Theme.danger : Theme.textSecondary)
-                    .trackedCaps(1.4)
-                Spacer()
-                Text("\(Int(level * 100))")
-                    .font(DFFont.mono(13))
-                    .foregroundStyle(level > 0.66 ? Theme.danger : .white)
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: level)
-            }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.05))
-                    Capsule()
-                        .fill(DFGradient.pressureFill(level: level))
-                        .frame(width: max(10, proxy.size.width * level))
-                        .shadow(color: Theme.accent.opacity(level > 0.5 ? 0.6 : 0), radius: 14, y: 0)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: level)
-                    if level > 0.75 {
-                        Capsule()
-                            .stroke(Theme.danger.opacity(pulse ? 0.0 : 0.9), lineWidth: 1.5)
-                            .frame(width: max(10, proxy.size.width * level))
-                            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: pulse)
-                    }
-                }
-            }
-            .frame(height: 8)
-            .onAppear { pulse = true }
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(DFFont.micro(9))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.4)
+            SegmentedBar(level: level, tint: Theme.accent)
         }
     }
 }
 
 struct ConfidenceMeter: View {
-    /// 0.0 ... 1.0
+    /// 0.0 … 1.0
     var level: Double
     var label: String = "Confidence"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(label)
-                    .font(DFFont.micro(10))
-                    .foregroundStyle(level > 0.5 ? Theme.success : Theme.textSecondary)
-                    .trackedCaps(1.4)
-                Spacer()
-                Text("\(Int(level * 100))")
-                    .font(DFFont.mono(13))
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: level)
-            }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.05))
-                    Capsule()
-                        .fill(DFGradient.success)
-                        .frame(width: max(10, proxy.size.width * level))
-                        .shadow(color: Theme.success.opacity(level > 0.4 ? 0.45 : 0), radius: 14, y: 0)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: level)
-                }
-            }
-            .frame(height: 8)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(DFFont.micro(9))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.4)
+            SegmentedBar(level: level, tint: Theme.ink)
         }
     }
 }

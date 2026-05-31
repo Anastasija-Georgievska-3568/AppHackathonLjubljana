@@ -39,8 +39,8 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
-        UIStatusBarStyle: UIStatusBarStyleLightContent
-        UIUserInterfaceStyle: Dark
+        UIStatusBarStyle: UIStatusBarStyleDarkContent
+        UIUserInterfaceStyle: Light
         UIViewControllerBasedStatusBarAppearance: false
         ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes: []

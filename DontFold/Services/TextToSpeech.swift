@@ -146,13 +146,15 @@ struct VoiceProfile {
     static func from(hint: String?) -> VoiceProfile {
         let hint = (hint ?? "").lowercased()
 
-        // Interviewer / hiring manager — male, serious, professional.
+        // Interviewer / hiring manager — male, focused, professional.
         // Checked BEFORE the warm bucket so "warm, lightly impatient" still routes here.
-        // → Jamie (Premium GB male), deliberate and authoritative.
+        // → Jamie (Premium GB male). Matches the friend voice's natural conversation
+        // pace (rate 0.50) but with a subtly lower pitch (0.95) — reads as
+        // "confident professional who's on the clock" rather than "slow/ominous".
         if hint.contains("interview") || hint.contains("hiring") || hint.contains("impatient") {
             return VoiceProfile(
-                rate: 0.46,
-                pitch: 0.91,
+                rate: 0.50,
+                pitch: 0.95,
                 preferredLanguage: "en-GB",
                 preferredIdentifierSubstrings: ["jamie", "lee", "daniel", "evan"]
             )

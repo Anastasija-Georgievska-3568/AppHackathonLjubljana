@@ -84,7 +84,13 @@ final class SpeechRecognizer {
                     self.transcript = result.bestTranscription.formattedString
                 }
                 if let error {
-                    self.state = .error(error.localizedDescription)
+                    // Suppress noisy spurious errors that iOS itself logs as
+                    // "Ignoring subsequent local speech recording error".
+                    let ns = error as NSError
+                    let isSpurious = ns.domain == "kAFAssistantErrorDomain" && (ns.code == 1101 || ns.code == 203 || ns.code == 216)
+                    if !isSpurious {
+                        self.state = .error(error.localizedDescription)
+                    }
                     try? await self.stop()
                 }
             }

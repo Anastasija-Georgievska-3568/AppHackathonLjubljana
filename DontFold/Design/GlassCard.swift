@@ -1,41 +1,40 @@
 import SwiftUI
 
+/// Hot Girl CEO "sticker card": cream fill, hard ink outline (1.5–2 px),
+/// 12 px radius. Set `highlighted: true` to use the soft-pink highlight fill.
+/// `offsetShadow: true` gives the flat 3×3 ink shadow for sticker accent moments.
 struct GlassCard<Content: View>: View {
-    var cornerRadius: CGFloat = 26
-    var padding: CGFloat = 20
+    var cornerRadius: CGFloat = 12
+    var padding: CGFloat = 12
+    /// Kept for compatibility with older call sites; ignored — the new card
+    /// always uses ink outlines, with optional pink accent via `highlighted`.
     var strokeColor: Color = Theme.stroke
+    var highlighted: Bool = false
+    var offsetShadow: Bool = false
+    var borderWidth: CGFloat = 1.5
     @ViewBuilder var content: () -> Content
+
+    var fill: Color {
+        highlighted ? Theme.bgElevated : Theme.bg
+    }
 
     var body: some View {
         content()
             .padding(padding)
-            .background {
-                ZStack {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.06),
-                                    Color.white.opacity(0.02)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-            }
-            .overlay {
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [strokeColor, Color.white.opacity(0.02)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
+                    .fill(fill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(Theme.ink, lineWidth: borderWidth)
+            )
+            .shadow(
+                color: offsetShadow ? Theme.ink.opacity(0.9) : .clear,
+                radius: 0,
+                x: offsetShadow ? 3 : 0,
+                y: offsetShadow ? 3 : 0
+            )
     }
 }

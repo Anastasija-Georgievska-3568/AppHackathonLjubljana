@@ -21,9 +21,9 @@ enum Difficulty: String, Codable, Hashable, CaseIterable {
 
     var tint: Color {
         switch self {
-        case .mild: Theme.accent3
-        case .spicy: Theme.warning
-        case .brutal: Theme.danger
+        case .mild: Theme.ink
+        case .spicy: Theme.accent
+        case .brutal: Theme.accent
         }
     }
 }
@@ -53,29 +53,24 @@ enum ScenarioCategory: String, Codable, Hashable, CaseIterable {
         }
     }
 
+    /// In Hot Girl CEO every category reads in hot pink — we lean on the
+    /// title, not the badge, to differentiate.
     var tint: Color {
-        switch self {
-        case .career: Theme.accent2
-        case .money: Theme.warning
-        case .life: Theme.accent3
-        case .phone: Theme.accent
-        case .social: Color(hex: 0xFF7AE0)
-        case .food: Color(hex: 0xFFB266)
-        }
+        Theme.accent
     }
 }
 
 struct Scenario: Hashable, Identifiable, Codable {
     let id: String
     let title: String
-    let blurb: String              // a one-liner for cards
-    let setup: String              // longer scene-setting text shown on detail
+    let blurb: String              // one-liner for cards
+    let setup: String              // longer scene description (Brief screen)
     let category: ScenarioCategory
     let difficulty: Difficulty
     let aiPersona: String          // e.g. "Hiring manager, slightly impatient"
     let aiVoiceHint: String        // gender/age hint for TTS
     let openingLine: String        // AI's first spoken line
     let userGoal: String           // what the user is trying to accomplish
-    let pressureCues: [String]     // things that should crank pressure ("vague answer", "overexplaining")
-    let confidenceCues: [String]   // things that should boost confidence ("clear ask", "named a number")
+    let pressureCues: [String]     // "avoid this" list — phrases / moves
+    let confidenceCues: [String]   // things that read as holding the line
 }

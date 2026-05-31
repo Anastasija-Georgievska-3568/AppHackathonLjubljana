@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+/// Share screen — the result card is the shareable artifact. Designed to
+/// export to a vertical 9:16 image (Instagram-Story / TikTok-overlay).
 struct ShareCardScreen: View {
     let result: SessionResult
     @Environment(Router.self) private var router
@@ -16,9 +18,14 @@ struct ShareCardScreen: View {
                 ShareCardView(result: result, isCompact: false)
                     .aspectRatio(9.0/16.0, contentMode: .fit)
                     .padding(.horizontal, 16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Theme.ink, lineWidth: 1.5)
+                            .padding(.horizontal, 16)
+                    )
                 Spacer(minLength: 0)
                 actions
-                    .padding(.top, 8)
+                    .padding(.top, 12)
             }
             .padding(.top, 6)
             .padding(.bottom, 22)
@@ -34,25 +41,22 @@ struct ShareCardScreen: View {
     private var header: some View {
         HStack {
             Button { router.pop() } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
-                    .padding(10)
-                    .background(Circle().fill(Color.white.opacity(0.10)))
+                GlyphChip(glyph: "←", filled: false, size: 30)
             }
+            .buttonStyle(.plain)
             Spacer()
-            Text("YOUR DROP")
-                .font(DFFont.micro(11))
-                .foregroundStyle(Theme.textSecondary)
-                .trackedCaps(1.8)
+            Text("your drop")
+                .font(DFFont.micro(10))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.6)
             Spacer()
-            Color.clear.frame(width: 36, height: 36)
+            Color.clear.frame(width: 30, height: 30)
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 16)
     }
 
     private var actions: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             GhostButton(title: "Save Image", systemImage: "square.and.arrow.down") {
                 saveImage()
             }
@@ -61,7 +65,7 @@ struct ShareCardScreen: View {
                 showingShareSheet = true
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 16)
     }
 
     @MainActor
@@ -69,7 +73,7 @@ struct ShareCardScreen: View {
         let renderer = ImageRenderer(
             content: ShareCardView(result: result, isCompact: false)
                 .frame(width: 1080, height: 1920)
-                .environment(\.colorScheme, .dark)
+                .environment(\.colorScheme, .light)
         )
         renderer.scale = 1
         renderer.isOpaque = true
@@ -85,158 +89,153 @@ struct ShareCardScreen: View {
     }
 }
 
+/// 9:16 share artifact — Hot Girl CEO. Cream background with ink outline,
+/// big DON'T / FOLD. wordmark, pink VERDICT card, two stat cards, footer.
 struct ShareCardView: View {
     let result: SessionResult
     var isCompact: Bool = false
 
     var body: some View {
         ZStack {
-            backgroundLayer
-            VStack(alignment: .leading, spacing: isCompact ? 16 : 26) {
+            // Background
+            Theme.bg
+            VStack(spacing: 0) {
                 topRow
+                    .padding(.top, isCompact ? 18 : 50)
+                Spacer(minLength: 0)
+                hero
                 Spacer(minLength: 0)
                 verdictBlock
+                    .padding(.top, isCompact ? 12 : 28)
                 Spacer(minLength: 0)
                 statRow
+                    .padding(.top, isCompact ? 12 : 28)
+                Spacer(minLength: 0)
                 footer
+                    .padding(.bottom, isCompact ? 18 : 50)
             }
-            .padding(isCompact ? 22 : 36)
+            .padding(.horizontal, isCompact ? 18 : 50)
         }
+        .clipShape(RoundedRectangle(cornerRadius: isCompact ? 14 : 0, style: .continuous))
         .aspectRatio(9.0/16.0, contentMode: .fit)
-    }
-
-    private var backgroundLayer: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(hex: 0x0B0617), Color(hex: 0x1A0C2C), Color(hex: 0x07060B)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            // Glow blobs
-            Circle()
-                .fill(Theme.accent.opacity(0.65))
-                .frame(width: 380, height: 380)
-                .blur(radius: 110)
-                .offset(x: -120, y: -200)
-            Circle()
-                .fill(Theme.accent2.opacity(0.55))
-                .frame(width: 360, height: 360)
-                .blur(radius: 110)
-                .offset(x: 140, y: 220)
-            // Noise grain (subtle)
-            Rectangle()
-                .fill(Color.white.opacity(0.015))
-        }
-        .clipShape(RoundedRectangle(cornerRadius: isCompact ? 24 : 0, style: .continuous))
     }
 
     private var topRow: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("DON'T")
-                    .font(.system(size: isCompact ? 14 : 22, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("FOLD.")
-                    .font(.system(size: isCompact ? 14 : 22, weight: .black, design: .rounded))
-                    .foregroundStyle(DFGradient.hero)
-            }
+            Text("your drop")
+                .font(DFFont.micro(isCompact ? 9 : 16))
+                .foregroundStyle(Theme.accent)
+                .trackedCaps(1.6)
             Spacer()
-            Text(result.scenarioTitle.uppercased())
-                .font(.system(size: isCompact ? 9 : 13, weight: .black, design: .rounded))
-                .foregroundStyle(Theme.textSecondary)
-                .tracking(1.6)
-                .multilineTextAlignment(.trailing)
-                .lineLimit(2)
-                .frame(maxWidth: isCompact ? 140 : 280, alignment: .trailing)
+            Text(dateLabel)
+                .font(DFFont.micro(isCompact ? 9 : 16))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.6)
         }
     }
 
-    private var shareTitleSize: CGFloat {
-        let len = result.verdictTitle.count
-        if isCompact {
-            switch len {
-            case 0...14: return 38
-            case 15...22: return 32
-            case 23...32: return 26
-            default: return 22
-            }
-        } else {
-            switch len {
-            case 0...14: return 86
-            case 15...22: return 72
-            case 23...32: return 58
-            default: return 46
-            }
+    private var hero: some View {
+        VStack(spacing: -(isCompact ? 8 : 18)) {
+            Text("DON'T")
+                .font(DFFont.display(isCompact ? 54 : 130))
+                .foregroundStyle(Theme.ink)
+                .tracking(-1.0)
+            Text("FOLD.")
+                .font(DFFont.display(isCompact ? 54 : 130))
+                .foregroundStyle(Theme.accent)
+                .tracking(-1.0)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var verdictBlock: some View {
-        VStack(alignment: .leading, spacing: isCompact ? 10 : 18) {
-            Text("VERDICT")
-                .font(.system(size: isCompact ? 9 : 13, weight: .black, design: .rounded))
-                .foregroundStyle(Theme.accent)
-                .tracking(1.8)
+        VStack(spacing: 4) {
+            Text("verdict")
+                .font(DFFont.micro(isCompact ? 9 : 16))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.6)
             Text(result.verdictTitle.uppercased())
-                .font(.system(size: shareTitleSize, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .lineSpacing(2)
-                .multilineTextAlignment(.leading)
-                .minimumScaleFactor(0.5)
-                .lineLimit(4)
+                .font(DFFont.title(isCompact ? verdictSize.compact : verdictSize.full))
+                .foregroundStyle(Theme.accent)
+                .multilineTextAlignment(.center)
+                .tracking(-0.5)
+                .lineSpacing(-2)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\u{201C}\(result.oneLinerToShare)\u{201D}")
-                .font(.system(size: isCompact ? 13 : 22, weight: .semibold, design: .rounded))
-                .italic()
-                .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.6)
+        }
+        .padding(isCompact ? 12 : 28)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: isCompact ? 12 : 24, style: .continuous)
+                .fill(Theme.bgElevated)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: isCompact ? 12 : 24, style: .continuous)
+                .stroke(Theme.ink, lineWidth: isCompact ? 1.5 : 4)
+        )
+    }
+
+    private var verdictSize: (compact: CGFloat, full: CGFloat) {
+        let len = result.verdictTitle.count
+        switch len {
+        case 0...14: return (compact: 24, full: 68)
+        case 15...22: return (compact: 20, full: 58)
+        case 23...32: return (compact: 17, full: 46)
+        default: return (compact: 14, full: 38)
         }
     }
 
     private var statRow: some View {
-        HStack(spacing: isCompact ? 8 : 14) {
-            mini("PRESSURE", "\(Int(result.finalPressure * 100))", Theme.danger)
-            mini("CONFIDENCE", "\(Int(result.finalConfidence * 100))", Theme.success)
-            if let first = result.stats.first {
-                mini(first.label, first.value, Theme.accent2)
-            }
+        HStack(spacing: isCompact ? 8 : 18) {
+            statCard(label: "pressure",
+                     value: Int(result.finalPressure * 100),
+                     highlighted: false)
+            statCard(label: "confidence",
+                     value: Int(result.finalConfidence * 100),
+                     highlighted: true)
         }
     }
 
-    private func mini(_ label: String, _ value: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func statCard(label: String, value: Int, highlighted: Bool) -> some View {
+        VStack(spacing: 2) {
             Text(label)
-                .font(.system(size: isCompact ? 8 : 11, weight: .black, design: .rounded))
-                .foregroundStyle(tint)
-                .tracking(1.4)
-            Text(value)
-                .font(.system(size: isCompact ? 22 : 42, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
+                .font(DFFont.micro(isCompact ? 9 : 16))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.6)
+            Text("\(value)")
+                .font(DFFont.title(isCompact ? 30 : 90))
+                .foregroundStyle(highlighted ? Theme.accent : Theme.ink)
         }
-        .padding(isCompact ? 10 : 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(isCompact ? 10 : 28)
+        .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: isCompact ? 12 : 18)
-                .fill(Color.white.opacity(0.06))
+            RoundedRectangle(cornerRadius: isCompact ? 10 : 22, style: .continuous)
+                .fill(highlighted ? Theme.bgElevated : Theme.bg)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: isCompact ? 12 : 18)
-                .stroke(tint.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: isCompact ? 10 : 22, style: .continuous)
+                .stroke(Theme.ink, lineWidth: isCompact ? 1.5 : 4)
         )
     }
 
     private var footer: some View {
         HStack {
             Text("dontfold.app")
-                .font(.system(size: isCompact ? 10 : 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.textMuted)
-                .tracking(1.4)
+                .font(DFFont.micro(isCompact ? 9 : 16))
+                .foregroundStyle(Theme.ink)
+                .trackedCaps(1.6)
             Spacer()
-            Text(result.date.formatted(.dateTime.month(.abbreviated).day().year()))
-                .font(.system(size: isCompact ? 10 : 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.textMuted)
-                .tracking(1.2)
+            Text(result.scenarioTitle.lowercased())
+                .font(DFFont.micro(isCompact ? 9 : 16))
+                .foregroundStyle(Theme.accent)
+                .trackedCaps(1.6)
         }
+    }
+
+    private var dateLabel: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM yyyy"
+        return formatter.string(from: result.date).lowercased()
     }
 }
 
