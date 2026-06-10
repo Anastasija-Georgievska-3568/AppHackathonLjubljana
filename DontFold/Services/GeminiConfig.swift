@@ -1,32 +1,15 @@
 import Foundation
 
 enum GeminiConfig {
-    /// Look in this order:
-    /// 1. Bundled `.env` file (gitignored; populated from `.env.example`)
-    /// 2. `Info.plist` key `GEMINI_API_KEY`
-    /// 3. Environment variable `GEMINI_API_KEY` (Xcode scheme)
-    /// 4. Local file at `~/Documents/dontfold_gemini_key.txt` (dev convenience)
-    static var apiKey: String? {
-        if let v = DotEnv["GEMINI_API_KEY"] { return v }
-        if let v = Bundle.main.object(forInfoDictionaryKey: "GEMINI_API_KEY") as? String, !v.isEmpty, v != "$(GEMINI_API_KEY)" {
-            return v
-        }
-        if let v = ProcessInfo.processInfo.environment["GEMINI_API_KEY"], !v.isEmpty {
-            return v
-        }
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        if let url = docs?.appendingPathComponent("dontfold_gemini_key.txt"),
-           let v = try? String(contentsOf: url, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
-           !v.isEmpty {
-            return v
-        }
-        return nil
+    /// Cloudflare Worker proxy. The real Gemini key lives on the Worker, never here.
+    static let proxyBase = "https://dontfold-proxy.dontfold.workers.dev"
+    
+    /// Shared token so only this app can use the proxy. Not a Gemini key —
+    /// rotate via `wrangler secret put APP_TOKEN` if it leaks.
+    static let appToken = "1e5ba1cb1fea44ab80d52b05984206fd8d8d86db42ea24b0208415b6732337df"
+    
+    /// True once the proxy is configured (placeholder not left in).
+    static var hasKey: Bool {
+        !proxyBase.isEmpty && !appToken.isEmpty
     }
-
-    static var hasKey: Bool { apiKey != nil }
-
-    /// Default model. Override if you want.
-    static let model = "gemini-2.5-flash"
-
-    static let endpointBase = "https://generativelanguage.googleapis.com/v1beta/models"
 }

@@ -21,10 +21,6 @@ targets:
     platform: iOS
     sources:
       - path: DontFold
-      - path: .env
-        type: file
-        buildPhase: resources
-        optional: true
     info:
       path: DontFold/Resources/Info.plist
       properties:

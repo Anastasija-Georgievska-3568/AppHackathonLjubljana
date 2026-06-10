@@ -145,7 +145,7 @@ actor GeminiService {
                 shouldEnd: false
             )
         }
-        guard let key = GeminiConfig.apiKey else {
+        guard GeminiConfig.hasKey else {
             return MockGemini.nextTurn(scenario: scenario, history: history)
         }
         let systemPrompt = isFinalTurn
@@ -166,7 +166,7 @@ actor GeminiService {
         )
         let raw: String
         do {
-            raw = try await call(body: body, apiKey: key)
+            raw = try await call(path: "/turn", body: body)
         } catch GeminiError.http(let code, let body) where code == 429 || (500...599).contains(code) {
             // Rate-limited or server-side issue even after retries.
             // Fall back to a local response so the session keeps moving.
@@ -188,7 +188,7 @@ actor GeminiService {
     // MARK: - Verdict (at end of session)
 
     func finalVerdict(scenario: Scenario, transcript: [Turn], finalPressure: Double, finalConfidence: Double) async throws -> AIVerdict {
-        guard let key = GeminiConfig.apiKey else {
+        guard GeminiConfig.hasKey else {
             return MockGemini.finalVerdict(scenario: scenario, transcript: transcript, finalPressure: finalPressure, finalConfidence: finalConfidence)
         }
         let systemPrompt = Prompts.verdictSystemPrompt(scenario: scenario)
@@ -206,7 +206,7 @@ actor GeminiService {
         )
         let raw: String
         do {
-            raw = try await call(body: body, apiKey: key)
+            raw = try await call(path: "/verdict", body: body)
         } catch GeminiError.http(let code, let body) where code == 429 || (500...599).contains(code) {
             #if DEBUG
             print("[Gemini/verdict] HTTP \(code) after retries — falling back to MockGemini. body: \(body.prefix(200))")
@@ -237,11 +237,12 @@ actor GeminiService {
     private static let maxRetries = 2
     private static let baseBackoffSeconds: Double = 2.0
 
-    private func call(body: GeminiRequest, apiKey: String) async throws -> String {
-        let url = URL(string: "\(GeminiConfig.endpointBase)/\(GeminiConfig.model):generateContent?key=\(apiKey)")!
+    private func call(path: String, body: GeminiRequest) async throws -> String {
+        let url = URL(string: "\(GeminiConfig.proxyBase)\(path)")!
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(GeminiConfig.appToken, forHTTPHeaderField: "X-App-Token")
         req.httpBody = try JSONEncoder().encode(body)
         req.timeoutInterval = 30
 
