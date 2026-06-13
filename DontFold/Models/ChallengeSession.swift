@@ -37,7 +37,6 @@ final class ChallengeSession {
     let scenario: Scenario
     var phase: ChallengePhase = .intro
     var turns: [Turn] = []
-    var pressure: Double = 0.25     // 0..1
     var confidence: Double = 0.55   // 0..1
     var lastCallout: String?
     var elapsedSeconds: Int = 0
@@ -67,11 +66,9 @@ final class ChallengeSession {
         if let callout, !callout.isEmpty { lastCallout = callout }
     }
 
-    func applyDeltas(pressureDelta: Int, confidenceDelta: Int) {
-        let p = pressure + Double(pressureDelta) / 100.0
+    func applyDelta(confidenceDelta: Int) {
         let c = confidence + Double(confidenceDelta) / 100.0
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-            pressure = max(0, min(1, p))
             confidence = max(0, min(1, c))
         }
     }

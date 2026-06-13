@@ -186,14 +186,9 @@ struct ShareCardView: View {
     }
 
     private var statRow: some View {
-        HStack(spacing: isCompact ? 8 : 18) {
-            statCard(label: "pressure",
-                     value: Int(result.finalPressure * 100),
-                     highlighted: false)
-            statCard(label: "confidence",
-                     value: Int(result.finalConfidence * 100),
-                     highlighted: true)
-        }
+        statCard(label: "confidence",
+                 value: Int(result.finalConfidence * 100),
+                 highlighted: true)
     }
 
     private func statCard(label: String, value: Int, highlighted: Bool) -> some View {

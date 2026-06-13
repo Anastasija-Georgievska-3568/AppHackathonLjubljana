@@ -1,22 +1,18 @@
 import SwiftUI
 
 /// D1Home — Hot Girl CEO direction.
-/// Status row → DON'T / FOLD. wordmark + "♡ girlies edition" scribble →
-/// "pick your hard convo →" → scenario card stack → 🔥 streak + scribble.
+/// Wordmark "DON'T / FOLD." → "pick your hard convo →" → scenario card stack.
 struct HomeScreen: View {
     @Environment(Router.self) private var router
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Theme.bg.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    statusRow
-                        .padding(.top, 4)
-
                     wordmark
-                        .padding(.top, 10)
+                        .padding(.top, 12)
 
                     Text("pick your hard convo →")
                         .font(DFFont.micro(10))
@@ -27,89 +23,60 @@ struct HomeScreen: View {
                     scenarioStack
                         .padding(.top, 10)
 
-                    Color.clear.frame(height: 80) // footer breathing room
+                    Color.clear.frame(height: 40)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
             }
-
-            footer
-                .padding(.horizontal, 16)
-                .padding(.bottom, 14)
         }
         .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - Sections
 
-    private var statusRow: some View {
-        HStack {
-            Text("01 · home")
-                .font(DFFont.micro(10))
-                .foregroundStyle(Theme.ink)
-                .trackedCaps(1.6)
-            Spacer()
-            Text("⚙")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Theme.ink)
-        }
-    }
-
     private var wordmark: some View {
-        ZStack(alignment: .topTrailing) {
-            VStack(alignment: .leading, spacing: -8) {
-                Text("DON'T")
-                    .font(DFFont.display(46))
-                    .foregroundStyle(Theme.ink)
-                    .tracking(-1.0)
-                Text("FOLD.")
-                    .font(DFFont.display(46))
-                    .foregroundStyle(Theme.accent)
-                    .tracking(-1.0)
-            }
-            ScribbleTag(text: "♡ girlies edition", rotation: -6, color: Theme.accent, size: 13)
-                .offset(x: 0, y: -16)
+        VStack(alignment: .leading, spacing: -8) {
+            Text("DON'T")
+                .font(DFFont.display(46))
+                .foregroundStyle(Theme.ink)
+                .tracking(-1.0)
+            Text("FOLD.")
+                .font(DFFont.display(46))
+                .foregroundStyle(Theme.accent)
+                .tracking(-1.0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var scenarioStack: some View {
         VStack(spacing: 8) {
-            ForEach(Array(ScenarioCatalog.all.enumerated()), id: \.element.id) { idx, scenario in
-                Button {
-                    router.push(.scenarioDetail(scenario))
-                } label: {
-                    ScenarioRowCard(scenario: scenario, highlighted: idx == 0)
+            ForEach(ScenarioCatalog.all, id: \.id) { scenario in
+                if scenario.comingSoon {
+                    ScenarioRowCard(scenario: scenario)
+                        .opacity(0.5)
+                        .allowsHitTesting(false)
+                } else {
+                    Button {
+                        if scenario.personas != nil {
+                            router.push(.personaPicker(scenario))
+                        } else {
+                            router.push(.scenarioDetail(scenario))
+                        }
+                    } label: {
+                        ScenarioRowCard(scenario: scenario)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
-    }
-
-    private var footer: some View {
-        HStack {
-            Chip(label: "5-day streak", systemImage: "flame.fill")
-            Spacer()
-            ScribbleTag(text: "\u{201C}don't be normal\u{201D}", rotation: -4, color: Theme.accent, size: 14)
-        }
-        .padding(.vertical, 8)
-        .background(
-            LinearGradient(
-                colors: [Theme.bg.opacity(0), Theme.bg, Theme.bg],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .padding(.horizontal, -16)
-        )
     }
 }
 
 struct ScenarioRowCard: View {
     let scenario: Scenario
-    var highlighted: Bool = false
 
     var body: some View {
-        GlassCard(cornerRadius: 12, padding: 12, highlighted: highlighted) {
+        GlassCard(cornerRadius: 12, padding: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .top, spacing: 8) {
                     Text(scenario.title)
@@ -119,14 +86,40 @@ struct ScenarioRowCard: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
-                    GlyphChip(glyph: "↗", filled: true, size: 24)
+                    arrowOrTag
                 }
                 Text(scenario.blurb)
                     .font(DFFont.body(12))
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
+                if let personas = scenario.personas, !personas.isEmpty, !scenario.comingSoon {
+                    Text(personaBadgeText(count: personas.count))
+                        .font(DFFont.micro(10))
+                        .foregroundStyle(Theme.textSecondary)
+                        .trackedCaps(1.6)
+                        .padding(.top, 2)
+                }
             }
+        }
+    }
+
+    private func personaBadgeText(count: Int) -> String {
+        let type = scenario.personaTypeLabel
+        return type.isEmpty ? "\(count) personas" : "\(count) \(type) personas"
+    }
+
+    @ViewBuilder
+    private var arrowOrTag: some View {
+        if scenario.comingSoon {
+            Text("coming soon")
+                .font(DFFont.micro(9))
+                .foregroundStyle(Theme.accent)
+                .trackedCaps(1.6)
+        } else {
+            Text("↗")
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(Theme.accent)
         }
     }
 }

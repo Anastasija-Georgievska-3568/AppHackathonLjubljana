@@ -19,13 +19,23 @@ struct ScenarioListScreen: View {
                         .padding(.top, 4)
 
                     VStack(spacing: 8) {
-                        ForEach(Array(ScenarioCatalog.all.enumerated()), id: \.element.id) { idx, scenario in
-                            Button {
-                                router.push(.scenarioDetail(scenario))
-                            } label: {
-                                ScenarioRowCard(scenario: scenario, highlighted: idx == 0)
+                        ForEach(ScenarioCatalog.all, id: \.id) { scenario in
+                            if scenario.comingSoon {
+                                ScenarioRowCard(scenario: scenario)
+                                    .opacity(0.5)
+                                    .allowsHitTesting(false)
+                            } else {
+                                Button {
+                                    if scenario.personas != nil {
+                                        router.push(.personaPicker(scenario))
+                                    } else {
+                                        router.push(.scenarioDetail(scenario))
+                                    }
+                                } label: {
+                                    ScenarioRowCard(scenario: scenario)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                     Spacer(minLength: 40)

@@ -11,6 +11,8 @@ struct RootView: View {
                     switch route {
                     case .scenarioList:
                         ScenarioListScreen()
+                    case .personaPicker(let scenario):
+                        PersonaPickerScreen(scenario: scenario)
                     case .scenarioDetail(let scenario):
                         ScenarioDetailScreen(scenario: scenario)
                     case .challenge(let scenario):

@@ -128,16 +128,11 @@ struct ResultScreen: View {
     }
 
     private var statsRow: some View {
-        HStack(spacing: 10) {
-            statCard(label: "pressure",
-                     value: Int(result.finalPressure * 100),
-                     highlighted: false)
-            statCard(label: "confidence",
-                     value: Int(result.finalConfidence * 100),
-                     highlighted: true)
-        }
-        .opacity(statsAppeared ? 1 : 0)
-        .offset(y: statsAppeared ? 0 : 12)
+        statCard(label: "confidence",
+                 value: Int(result.finalConfidence * 100),
+                 highlighted: true)
+            .opacity(statsAppeared ? 1 : 0)
+            .offset(y: statsAppeared ? 0 : 12)
     }
 
     private func statCard(label: String, value: Int, highlighted: Bool) -> some View {

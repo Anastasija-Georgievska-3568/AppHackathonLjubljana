@@ -2,6 +2,7 @@ import SwiftUI
 
 enum Route: Hashable {
     case scenarioList
+    case personaPicker(Scenario)
     case scenarioDetail(Scenario)
     case challenge(Scenario)
     case result(SessionResult)

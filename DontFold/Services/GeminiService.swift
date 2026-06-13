@@ -4,18 +4,16 @@ import Foundation
 
 struct AITurnResponse: Codable, Sendable {
     let say: String
-    let pressureDelta: Int
     let confidenceDelta: Int
     let callout: String?
     let shouldEnd: Bool
 
     enum CodingKeys: String, CodingKey {
-        case say, pressureDelta, confidenceDelta, callout, shouldEnd
+        case say, confidenceDelta, callout, shouldEnd
     }
 
-    init(say: String, pressureDelta: Int, confidenceDelta: Int, callout: String?, shouldEnd: Bool) {
+    init(say: String, confidenceDelta: Int, callout: String?, shouldEnd: Bool) {
         self.say = say
-        self.pressureDelta = pressureDelta
         self.confidenceDelta = confidenceDelta
         self.callout = callout
         self.shouldEnd = shouldEnd
@@ -24,7 +22,6 @@ struct AITurnResponse: Codable, Sendable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         say = (try? c.decode(String.self, forKey: .say)) ?? ""
-        pressureDelta = Self.decodeFlexibleInt(c, key: .pressureDelta) ?? 0
         confidenceDelta = Self.decodeFlexibleInt(c, key: .confidenceDelta) ?? 0
         callout = try? c.decodeIfPresent(String.self, forKey: .callout)
         shouldEnd = (try? c.decode(Bool.self, forKey: .shouldEnd)) ?? false
@@ -139,7 +136,6 @@ actor GeminiService {
         if history.isEmpty {
             return AITurnResponse(
                 say: scenario.openingLine,
-                pressureDelta: 0,
                 confidenceDelta: 0,
                 callout: nil,
                 shouldEnd: false
@@ -187,12 +183,12 @@ actor GeminiService {
 
     // MARK: - Verdict (at end of session)
 
-    func finalVerdict(scenario: Scenario, transcript: [Turn], finalPressure: Double, finalConfidence: Double) async throws -> AIVerdict {
+    func finalVerdict(scenario: Scenario, transcript: [Turn], finalConfidence: Double) async throws -> AIVerdict {
         guard GeminiConfig.hasKey else {
-            return MockGemini.finalVerdict(scenario: scenario, transcript: transcript, finalPressure: finalPressure, finalConfidence: finalConfidence)
+            return MockGemini.finalVerdict(scenario: scenario, transcript: transcript, finalConfidence: finalConfidence)
         }
         let systemPrompt = Prompts.verdictSystemPrompt(scenario: scenario)
-        let userText = Prompts.verdictUserPrompt(transcript: transcript, finalPressure: finalPressure, finalConfidence: finalConfidence)
+        let userText = Prompts.verdictUserPrompt(transcript: transcript, finalConfidence: finalConfidence)
         let body = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: [.init(role: "user", parts: [.init(text: userText)])],
@@ -214,7 +210,6 @@ actor GeminiService {
             return MockGemini.finalVerdict(
                 scenario: scenario,
                 transcript: transcript,
-                finalPressure: finalPressure,
                 finalConfidence: finalConfidence
             )
         }
@@ -397,12 +392,11 @@ actor GeminiService {
         type: "OBJECT",
         properties: [
             "say": .init(type: "STRING"),
-            "pressureDelta": .init(type: "INTEGER"),
             "confidenceDelta": .init(type: "INTEGER"),
             "callout": .init(type: "STRING", nullable: true),
             "shouldEnd": .init(type: "BOOLEAN"),
         ],
-        required: ["say", "pressureDelta", "confidenceDelta", "shouldEnd"],
+        required: ["say", "confidenceDelta", "shouldEnd"],
         items: nil
     )
 
@@ -535,8 +529,7 @@ private enum Prompts {
 
         Scoring rules — return JSON:
         - say: your in-character spoken response, 1–2 sentences max
-        - pressureDelta: integer in [-20, +30]. Increase when user folds, decrease when user is composed.
-        - confidenceDelta: integer in [-30, +20]. Reward clarity, penalize hedging.
+        - confidenceDelta: integer in [-30, +20]. Reward clarity and holding the line, penalize hedging and folding.
         - callout: optional 1-line Gen-Z sass observation about what the user JUST did wrong — only when it's funny/true (e.g. "you apologized before explaining the issue"). Null if user did fine.
         - shouldEnd: true when the scene reaches a natural close OR after ~6-8 user turns.
 
@@ -583,8 +576,8 @@ private enum Prompts {
         Stylistically: bold, short, screenshottable, NOT corporate, NOT therapist-y, NOT mean.
 
         ⚠️ CRITICAL — TONE MUST MATCH PERFORMANCE.
-        The user's final confidence and pressure scores tell you how they actually did.
-        Read them FIRST, then pick tone:
+        The user's final confidence score tells you how they actually did.
+        Read it FIRST, then pick tone:
 
         • Confidence ≥ 70 → CELEBRATE. Hype them. "Held the room", "main character energy",
           "quietly devastating", "iconic". Witty, not gushing. NO roasting. NO criticism.
@@ -598,9 +591,6 @@ private enum Prompts {
         • Confidence < 40 → ROAST (kindly). They folded. Lean into the sass.
           "Recovering people pleaser", "folded on impact". Highlights call out specific
           moments of caving.
-
-        ALSO consider pressure (high pressure = they got rattled, low pressure = they
-        stayed composed) when picking title and vibe.
 
         JSON fields:
         - verdictTitle: 2-4 word title. Pick from the right tier:
@@ -628,18 +618,16 @@ private enum Prompts {
         """
     }
 
-    static func verdictUserPrompt(transcript: [Turn], finalPressure: Double, finalConfidence: Double) -> String {
+    static func verdictUserPrompt(transcript: [Turn], finalConfidence: Double) -> String {
         let convo = transcript.map { t in
             "\(t.speaker == .ai ? "AI" : "USER"): \(t.text)"
         }.joined(separator: "\n")
-        let p = Int(finalPressure * 100)
         let c = Int(finalConfidence * 100)
         let tier: String
         if c >= 70 { tier = "CELEBRATE — the user held strong. Hype them." }
         else if c >= 40 { tier = "MIXED — partial win. Wry, balanced tone." }
         else { tier = "ROAST — they folded. Lean into the sass." }
         return """
-        Final pressure: \(p)/100
         Final confidence: \(c)/100
         → Tier for this recap: \(tier)
 
@@ -657,7 +645,6 @@ enum MockGemini {
         if userTurns == 0 {
             return AITurnResponse(
                 say: scenario.openingLine,
-                pressureDelta: 0,
                 confidenceDelta: 0,
                 callout: nil,
                 shouldEnd: false
@@ -679,15 +666,14 @@ enum MockGemini {
         let folded = lastUser.contains("sorry") || lastUser.contains("just") || lastUser.contains("kind of") || lastUser.contains("maybe")
         return AITurnResponse(
             say: lines.randomElement()!,
-            pressureDelta: folded ? 12 : -5,
             confidenceDelta: folded ? -10 : 6,
             callout: folded ? callouts.randomElement() : nil,
             shouldEnd: userTurns >= 6
         )
     }
 
-    static func finalVerdict(scenario: Scenario, transcript: [Turn], finalPressure: Double, finalConfidence: Double) -> AIVerdict {
-        let title = VerdictTemplates.fallback(pressure: finalPressure, confidence: finalConfidence)
+    static func finalVerdict(scenario: Scenario, transcript: [Turn], finalConfidence: Double) -> AIVerdict {
+        let title = VerdictTemplates.fallback(confidence: finalConfidence)
         return AIVerdict(
             verdictTitle: title,
             verdictVibe: "You walked in confident and left… negotiating with yourself. Iconic.",
@@ -698,7 +684,6 @@ enum MockGemini {
                 "Recovered in the final line — barely",
             ],
             stats: [
-                .init(label: "FINAL PRESSURE", value: "\(Int(finalPressure * 100))", detail: nil),
                 .init(label: "FINAL CONFIDENCE", value: "\(Int(finalConfidence * 100))", detail: nil),
                 .init(label: "TURNS", value: "\(transcript.filter { $0.speaker == .user }.count)", detail: nil),
             ]

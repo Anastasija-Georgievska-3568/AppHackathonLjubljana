@@ -9,7 +9,6 @@ struct SessionResult: Hashable, Codable {
     let oneLinerToShare: String    // pithy, for the share card
     let highlights: [String]       // 2-4 quick observations
     let stats: [ResultStat]
-    let finalPressure: Double
     let finalConfidence: Double
     let date: Date
     let transcript: [Turn]
@@ -22,7 +21,6 @@ struct SessionResult: Hashable, Codable {
         oneLinerToShare: String,
         highlights: [String],
         stats: [ResultStat],
-        finalPressure: Double,
         finalConfidence: Double,
         transcript: [Turn]
     ) {
@@ -34,7 +32,6 @@ struct SessionResult: Hashable, Codable {
         self.oneLinerToShare = oneLinerToShare
         self.highlights = highlights
         self.stats = stats
-        self.finalPressure = finalPressure
         self.finalConfidence = finalConfidence
         self.date = Date()
         self.transcript = transcript
@@ -68,7 +65,7 @@ enum VerdictTemplates {
         "Held The Room",
     ]
 
-    static func fallback(pressure: Double, confidence: Double) -> String {
+    static func fallback(confidence: Double) -> String {
         if confidence < 0.35 { return fold.randomElement()! }
         if confidence < 0.7 { return mid.randomElement()! }
         return hold.randomElement()!

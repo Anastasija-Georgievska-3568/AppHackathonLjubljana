@@ -12,22 +12,22 @@ enum DFFont {
 
     /// Massive wordmark / hero display (e.g. DON'T / FOLD.).
     static func display(_ size: CGFloat = 56) -> Font {
-        .system(size: size * scale, weight: .black, design: .rounded)
+        .system(size: size * scale, weight: .black)
     }
 
     /// Section titles, screen titles, headline numbers.
     static func title(_ size: CGFloat = 32) -> Font {
-        .system(size: size * scale, weight: .heavy, design: .rounded)
+        .system(size: size * scale, weight: .heavy)
     }
 
     /// Card titles, "ttl" in the wireframe.
     static func headline(_ size: CGFloat = 15) -> Font {
-        .system(size: size * scale, weight: .bold, design: .rounded)
+        .system(size: size * scale, weight: .bold)
     }
 
     /// Body / subtitles.
     static func body(_ size: CGFloat = 13) -> Font {
-        .system(size: size * scale, weight: .regular, design: .rounded)
+        .system(size: size * scale, weight: .regular)
     }
 
     /// Eyebrows / labels / micro chips (uppercase + tracked).

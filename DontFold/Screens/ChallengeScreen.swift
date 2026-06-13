@@ -44,22 +44,31 @@ struct ChallengeScreen: View {
     // MARK: - Sections
 
     private var header: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("live · turn \(currentTurnDisplay)/\(session.maxTurns)")
-                    .font(DFFont.micro(10))
-                    .foregroundStyle(Theme.ink)
-                    .trackedCaps(1.6)
-                Text(scenario.title)
-                    .font(DFFont.headline(16))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(scenario.title)
+                        .font(DFFont.headline(16))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text("· turn \(currentTurnDisplay)/\(session.maxTurns)")
+                        .font(DFFont.body(13))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                if !scenario.personaLabel.isEmpty {
+                    Text(scenario.personaLabel.uppercased())
+                        .font(DFFont.micro(10))
+                        .foregroundStyle(Theme.textSecondary)
+                        .trackedCaps(1.6)
+                }
             }
             Spacer()
             Button {
                 Task { await abort() }
             } label: {
-                GlyphChip(glyph: "×", filled: false, size: 26)
+                Text("×")
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(Theme.ink)
             }
             .buttonStyle(.plain)
         }
@@ -71,11 +80,9 @@ struct ChallengeScreen: View {
     }
 
     private var metersRow: some View {
-        HStack(spacing: 10) {
-            PressureMeter(level: session.pressure).frame(maxWidth: .infinity, alignment: .leading)
-            ConfidenceMeter(level: session.confidence).frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.top, 4)
+        ConfidenceMeter(level: session.confidence)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
     }
 
     @ViewBuilder
@@ -359,7 +366,7 @@ struct ChallengeScreen: View {
                 history: session.turns,
                 isFinalTurn: isFinalTurn
             )
-            session.applyDeltas(pressureDelta: resp.pressureDelta, confidenceDelta: resp.confidenceDelta)
+            session.applyDelta(confidenceDelta: resp.confidenceDelta)
             session.appendAI(resp.say, callout: resp.callout)
             session.phase = .aiSpeaking
 
@@ -388,7 +395,6 @@ struct ChallengeScreen: View {
             return try await GeminiService.shared.finalVerdict(
                 scenario: scenario,
                 transcript: session.turns,
-                finalPressure: session.pressure,
                 finalConfidence: session.confidence
             )
         } catch {
@@ -396,7 +402,6 @@ struct ChallengeScreen: View {
             return MockGemini.finalVerdict(
                 scenario: scenario,
                 transcript: session.turns,
-                finalPressure: session.pressure,
                 finalConfidence: session.confidence
             )
         }
@@ -409,13 +414,12 @@ struct ChallengeScreen: View {
             scenarioTitle: scenario.title,
             scenarioId: scenario.id,
             verdictTitle: verdict.verdictTitle.isEmpty
-                ? VerdictTemplates.fallback(pressure: session.pressure, confidence: session.confidence)
+                ? VerdictTemplates.fallback(confidence: session.confidence)
                 : verdict.verdictTitle,
             verdictVibe: verdict.verdictVibe,
             oneLinerToShare: verdict.oneLinerToShare,
             highlights: verdict.highlights,
             stats: verdict.stats.map { ResultStat(label: $0.label, value: $0.value, detail: $0.detail) },
-            finalPressure: session.pressure,
             finalConfidence: session.confidence,
             transcript: session.turns
         )

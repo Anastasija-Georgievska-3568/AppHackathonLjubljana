@@ -50,17 +50,3 @@ struct GlyphChip: View {
     }
 }
 
-struct DifficultyPip: View {
-    let difficulty: Difficulty
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<3) { i in
-                Circle()
-                    .fill(i < difficulty.level ? Theme.accent : Theme.bg)
-                    .overlay(Circle().stroke(Theme.ink, lineWidth: 1))
-                    .frame(width: 7, height: 7)
-            }
-        }
-    }
-}

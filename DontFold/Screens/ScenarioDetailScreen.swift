@@ -35,13 +35,11 @@ struct ScenarioDetailScreen: View {
 
     private var statusRow: some View {
         HStack {
-            Text("02 · brief")
-                .font(DFFont.micro(10))
-                .foregroundStyle(Theme.ink)
-                .trackedCaps(1.6)
             Spacer()
             Button { router.pop() } label: {
-                GlyphChip(glyph: "×", filled: true, size: 26)
+                Text("←")
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(Theme.ink)
             }
             .buttonStyle(.plain)
         }
@@ -101,6 +99,22 @@ struct ScenarioDetailScreen: View {
                 }
             }
 
+            // The persona
+            if !scenario.personaBrief.isEmpty {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("the persona")
+                            .font(DFFont.micro(10))
+                            .foregroundStyle(Theme.ink)
+                            .trackedCaps(1.6)
+                        Text(scenario.personaBrief)
+                            .font(DFFont.body(13))
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
             // ⚠ avoid this
             GlassCard {
                 VStack(alignment: .leading, spacing: 6) {
@@ -126,7 +140,7 @@ struct ScenarioDetailScreen: View {
             router.push(.challenge(scenario))
         } label: {
             GlassCard(padding: 12, highlighted: true) {
-                Text("START → hold the line")
+                Text("start challenge")
                     .font(DFFont.headline(15))
                     .trackedCaps(1.2)
                     .foregroundStyle(Theme.accent)
