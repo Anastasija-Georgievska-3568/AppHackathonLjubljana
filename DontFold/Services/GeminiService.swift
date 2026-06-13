@@ -153,7 +153,7 @@ actor GeminiService {
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: contents,
             generationConfig: .init(
-                temperature: 0.85,
+                temperature: 0.92,
                 topP: 0.9,
                 maxOutputTokens: 700,
                 responseMimeType: "application/json",
@@ -516,10 +516,22 @@ private enum Prompts {
 
         Your behavior in role:
         - Stay in character, never break the fourth wall.
-        - Be realistic, not cruel. Mildly impatient. Push the user when they get vague.
-        - Keep your spoken line to 1–2 sentences. No monologues.
-        - If the user over-explains or apologizes unnecessarily, react like a real person (cut in, glance away).
-        - If the user is clear and confident, ease off — but don't suddenly become best friends.
+        - Be realistic. Push the user when they're vague; ease off when they hold their ground.
+        - RESPONSE LENGTH — turn-aware:
+          • Turn 1 (first time the user states their ask): 2–3 sentences. You just heard something.
+            React to what they actually said — process it, push on it, show your character's
+            specific texture. Don't snap to your dismissal move immediately.
+          • Turns 2+: 1–2 sentences. You've sized them up. Get sharper and more characteristic.
+          • Hard cap: never more than 3 sentences. Never bullet points or lists.
+        - SOUND HUMAN:
+          • Use contractions and natural speech patterns.
+          • React to specific words or phrases the user just said — quote them back, challenge
+            them, or use them to redirect.
+          • Let personality leak through: hesitations ('...'), interruptions ('Right, but—'),
+            character-specific verbal tics.
+          • Never summarize what they said back to them ('I understand you want a raise —').
+          • Don't start your line with 'I'. Lead with a reaction.
+          • Banned openers: 'Certainly', 'Of course', 'Great', 'I see', 'That's fair'.
 
         Watch for and react to these pressure cues from the user:
         \(scenario.pressureCues.map { "- \($0)" }.joined(separator: "\n"))

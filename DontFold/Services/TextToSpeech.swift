@@ -1,11 +1,14 @@
 import Foundation
 import AVFoundation
 
+/// TTS pipeline: OpenAI `tts-1-hd` is the primary engine. AVSpeechSynthesizer is
+/// kept as a last-resort fallback (no API key, network failure, invalid voice).
 @MainActor
 final class TextToSpeech: NSObject {
     static let shared = TextToSpeech()
 
     private let synth = AVSpeechSynthesizer()
+    private var audioPlayer: AVAudioPlayer?
     private var continuation: CheckedContinuation<Void, Never>?
 
     override init() {
@@ -13,7 +16,99 @@ final class TextToSpeech: NSObject {
         synth.delegate = self
     }
 
+    /// Speak `text` using the OpenAI voice named in `voiceHint`. If the hint is
+    /// nil/empty we default to `alloy`. Returns when playback finishes (or fails).
     func speak(_ text: String, voiceHint: String? = nil) async {
+        let voice = Self.openAIVoice(from: voiceHint)
+        if GeminiConfig.hasKey {
+            do {
+                let data = try await Self.fetchOpenAIAudio(text: text, voice: voice)
+                await playAndWait(data)
+                return
+            } catch {
+                #if DEBUG
+                print("[TTS/OpenAI] \(error.localizedDescription) — falling back to AVSpeech")
+                #endif
+            }
+        }
+        await speakFallback(text)
+    }
+
+    func stop() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        if synth.isSpeaking {
+            synth.stopSpeaking(at: .immediate)
+        }
+        continuation?.resume()
+        continuation = nil
+    }
+
+    // MARK: - OpenAI path
+
+    private func playAndWait(_ data: Data) async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            continuation = cont
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+                try session.setActive(true, options: [])
+
+                let player = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.mp3.rawValue)
+                player.delegate = self
+                audioPlayer = player
+                player.play()
+            } catch {
+                #if DEBUG
+                print("[TTS/OpenAI] playback init failed: \(error.localizedDescription)")
+                #endif
+                continuation?.resume()
+                continuation = nil
+            }
+        }
+    }
+
+    /// Calls the Cloudflare Worker proxy's `/tts` route. The real OpenAI key
+    /// lives on the Worker as a secret — never in the app binary.
+    private static func fetchOpenAIAudio(text: String, voice: String) async throws -> Data {
+        let url = URL(string: "\(GeminiConfig.proxyBase)/tts")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(GeminiConfig.appToken, forHTTPHeaderField: "X-App-Token")
+        req.timeoutInterval = 20
+
+        let body: [String: String] = ["voice": voice, "input": text]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(domain: "ProxyTTS", code: 0,
+                          userInfo: [NSLocalizedDescriptionKey: "No response"])
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(domain: "ProxyTTS", code: http.statusCode,
+                          userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(body.prefix(200))"])
+        }
+        return data
+    }
+
+    /// Pulls a single OpenAI voice token out of the hint string. Hints are now
+    /// just the voice name (e.g. `"alloy"`, `"marin"`); legacy comma-separated
+    /// hints are tolerated by picking the first known voice token.
+    private static func openAIVoice(from hint: String?) -> String {
+        guard let raw = hint?.lowercased(), !raw.isEmpty else { return "alloy" }
+        let parts = raw.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        if let trimmed = parts.first(where: { !$0.isEmpty }) {
+            return trimmed
+        }
+        return "alloy"
+    }
+
+    // MARK: - AVSpeech fallback (minimal)
+
+    private func speakFallback(_ text: String) async {
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             continuation = cont
             do {
@@ -22,90 +117,11 @@ final class TextToSpeech: NSObject {
                 try session.setActive(true, options: [])
             } catch { /* non-fatal */ }
 
-            let profile = VoiceProfile.from(hint: voiceHint)
-            let utter = AVSpeechUtterance(string: humanize(text))
-            utter.rate = profile.rate
-            utter.pitchMultiplier = profile.pitch
+            let utter = AVSpeechUtterance(string: text)
+            utter.voice = AVSpeechSynthesisVoice(language: "en-US")
             utter.volume = 1.0
-            utter.preUtteranceDelay = 0.08
-            utter.postUtteranceDelay = 0.05
-            utter.voice = Self.pickVoice(for: profile)
-            #if DEBUG
-            let allEnglish = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") }
-            let premium = allEnglish.filter { $0.quality == .premium }
-            let enhanced = allEnglish.filter { $0.quality == .enhanced }
-            let defaults = allEnglish.filter { $0.quality == .default }
-            print("[TTS] hint=\(voiceHint ?? "nil") → using:", utter.voice?.name ?? "?",
-                  "lang:", utter.voice?.language ?? "?",
-                  "quality:", utter.voice?.quality.rawValue ?? -1,
-                  "(3=Premium, 2=Enhanced, 1=Default)")
-            print("[TTS] PREMIUM English voices:", premium.isEmpty ? "NONE" : premium.map { "\($0.name) [\($0.language)]" }.joined(separator: ", "))
-            print("[TTS] ENHANCED English voices:", enhanced.isEmpty ? "NONE" : enhanced.map { "\($0.name) [\($0.language)]" }.joined(separator: ", "))
-            print("[TTS] DEFAULT English voices:", defaults.map { "\($0.name) [\($0.language)]" }.joined(separator: ", "))
-            #endif
             synth.speak(utter)
         }
-    }
-
-    func stop() {
-        if synth.isSpeaking {
-            synth.stopSpeaking(at: .immediate)
-        }
-        continuation?.resume()
-        continuation = nil
-    }
-
-    /// Insert subtle pauses so the synthesizer breathes instead of rattling.
-    /// AVSpeech respects commas/ellipses for prosody — we lean into that.
-    private func humanize(_ text: String) -> String {
-        var out = text
-        // Add a soft pause after sentence-ending punctuation if the synth is rushing it.
-        out = out.replacingOccurrences(of: ".", with: ". ")
-        out = out.replacingOccurrences(of: "?", with: "? ")
-        out = out.replacingOccurrences(of: "!", with: "! ")
-        // Collapse accidental double-spaces.
-        while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
-        return out.trimmingCharacters(in: .whitespaces)
-    }
-
-    /// Pick the best available voice for the requested profile.
-    ///
-    /// Order of preference:
-    /// 1. A voice matching the profile's preferred identifier substring AND `.premium` quality
-    /// 2. Same identifier, `.enhanced` quality
-    /// 3. Any English voice with `.premium` quality (any gender)
-    /// 4. Any English voice with `.enhanced` quality
-    /// 5. Same identifier, `.default` quality
-    /// 6. The system default for the language
-    private static func pickVoice(for profile: VoiceProfile) -> AVSpeechSynthesisVoice? {
-        let allEnglish = AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.hasPrefix("en") }
-
-        let preferredIDs = profile.preferredIdentifierSubstrings
-
-        // Helper that picks the first voice whose identifier contains one of the substrings.
-        func first(in voices: [AVSpeechSynthesisVoice]) -> AVSpeechSynthesisVoice? {
-            for sub in preferredIDs {
-                if let v = voices.first(where: { $0.identifier.lowercased().contains(sub) }) {
-                    return v
-                }
-            }
-            return nil
-        }
-
-        let premium = allEnglish.filter { $0.quality == .premium }
-        if let v = first(in: premium) { return v }
-
-        let enhanced = allEnglish.filter { $0.quality == .enhanced }
-        if let v = first(in: enhanced) { return v }
-
-        if let any = premium.first { return any }
-        if let any = enhanced.first { return any }
-
-        if let v = first(in: allEnglish) { return v }
-
-        return AVSpeechSynthesisVoice(language: profile.preferredLanguage)
-            ?? AVSpeechSynthesisVoice(language: "en-US")
     }
 }
 
@@ -124,86 +140,19 @@ extension TextToSpeech: AVSpeechSynthesizerDelegate {
     }
 }
 
-// MARK: - Voice profile
-
-/// A bundle of TTS parameters tuned for each persona archetype.
-struct VoiceProfile {
-    var rate: Float
-    var pitch: Float
-    var preferredLanguage: String
-    var preferredIdentifierSubstrings: [String]
-
-    /// Substring lists are ordered: preferred voice first, then graceful fallbacks.
-    /// On a real iPhone with Premium voices downloaded, the first match wins.
-    /// On Simulator, falls through to lower-tier Default voices.
-    static let `default` = VoiceProfile(
-        rate: 0.47,
-        pitch: 1.0,
-        preferredLanguage: "en-US",
-        preferredIdentifierSubstrings: ["matilda", "samantha"]
-    )
-
-    static func from(hint: String?) -> VoiceProfile {
-        let hint = (hint ?? "").lowercased()
-
-        // Interviewer / hiring manager — male, focused, professional.
-        // Checked BEFORE the warm bucket so "warm, lightly impatient" still routes here.
-        // → Jamie (Premium GB male). Matches the friend voice's natural conversation
-        // pace (rate 0.50) but with a subtly lower pitch (0.95) — reads as
-        // "confident professional who's on the clock" rather than "slow/ominous".
-        if hint.contains("interview") || hint.contains("hiring") || hint.contains("impatient") {
-            return VoiceProfile(
-                rate: 0.50,
-                pitch: 0.95,
-                preferredLanguage: "en-GB",
-                preferredIdentifierSubstrings: ["jamie", "lee", "daniel", "evan"]
-            )
+extension TextToSpeech: AVAudioPlayerDelegate {
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            self.audioPlayer = nil
+            self.continuation?.resume()
+            self.continuation = nil
         }
-
-        // Warm / friendly (server, friend)
-        // → Matilda (Premium AU female, naturally warm)
-        if hint.contains("warm") || hint.contains("friendly") || hint.contains("upbeat") || hint.contains("playful") {
-            return VoiceProfile(
-                rate: 0.49,
-                pitch: 1.08,
-                preferredLanguage: "en-AU",
-                preferredIdentifierSubstrings: ["matilda", "ava", "allison", "samantha"]
-            )
+    }
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            self.audioPlayer = nil
+            self.continuation?.resume()
+            self.continuation = nil
         }
-
-        // Fast / clipped (receptionist, scripted bank agent)
-        // → Serena (Premium GB female, naturally polished/clipped)
-        if hint.contains("fast") || hint.contains("clipped") || hint.contains("scripted") || hint.contains("professional") {
-            return VoiceProfile(
-                rate: 0.55,
-                pitch: 1.00,
-                preferredLanguage: "en-GB",
-                preferredIdentifierSubstrings: ["serena", "jamie", "karen", "kate"]
-            )
-        }
-
-        // Calm / measured / evasive (manager negotiating, quitting boss)
-        // → Jamie (Premium GB male, lower, measured) — slow and dropped pitch
-        if hint.contains("calm") || hint.contains("measured") || hint.contains("evasive") || hint.contains("disappointed") || hint.contains("negotiating") {
-            return VoiceProfile(
-                rate: 0.43,
-                pitch: 0.92,
-                preferredLanguage: "en-GB",
-                preferredIdentifierSubstrings: ["jamie", "lee", "evan", "daniel", "tom"]
-            )
-        }
-
-        // Casual / breezy / older (landlord)
-        // → Jamie too, but lighter and a touch faster so he sounds different from the manager
-        if hint.contains("casual") || hint.contains("breezy") || hint.contains("older") {
-            return VoiceProfile(
-                rate: 0.48,
-                pitch: 1.05,
-                preferredLanguage: "en-GB",
-                preferredIdentifierSubstrings: ["jamie", "lee", "aaron", "fred", "rishi"]
-            )
-        }
-
-        return .default
     }
 }
