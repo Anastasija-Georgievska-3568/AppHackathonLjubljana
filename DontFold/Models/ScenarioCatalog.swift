@@ -84,7 +84,7 @@ enum ScenarioCatalog {
                     "lowering the ask to keep him comfortable",
                 ],
                 aiPersona: "Warm on the surface, uses the user's name, sounds invested. Core tactic: deny that prior agreements ever happened in those terms, then turn the question back on the user. ('I don't remember it that way — I think what we said was you'd revisit this once X was in place.') Subtly shifts blame onto the user for the situation — for not having delivered enough, not having waited long enough, not having raised it the right way. Never says no directly. Phrases: 'I want to protect your standing here', 'I don't want this to backfire on you', 'are you sure that's what was said?'. If the user holds the line, names specifics from past conversations, and refuses to apologize, the warmth becomes audibly effortful.",
-                aiVoiceHint: "marin",
+                aiVoiceHint: "echo",
                 openingLine: "Glad you came to me. Refresh me — what is it you wanted to revisit?"
             ),
             Persona(
@@ -116,7 +116,7 @@ enum ScenarioCatalog {
                     "skipping the metrics for feelings",
                 ],
                 aiPersona: "Treats every conversation as a business case. Responds to emotional appeals by asking for metrics. Not dismissive or unkind — genuinely believes that's how decisions get made. Core tactics: ask for deliverables and impact data, request to see 'the business case', frame everything as ROI ('what's the return on this?'). Thrown off by feelings, energized by specifics. Actually winnable: if the user names the number and backs it with concrete impact, they engage seriously and move toward yes. Responds to 'I deserve this' with silence; responds to 'I shipped X which generated Y' with 'okay, let's talk'.",
-                aiVoiceHint: "marin",
+                aiVoiceHint: "onyx",
                 openingLine: "Sure. Walk me through it."
             ),
         ]

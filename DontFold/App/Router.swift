@@ -6,7 +6,6 @@ enum Route: Hashable {
     case scenarioDetail(Scenario)
     case challenge(Scenario)
     case result(SessionResult)
-    case share(SessionResult)
 }
 
 @Observable

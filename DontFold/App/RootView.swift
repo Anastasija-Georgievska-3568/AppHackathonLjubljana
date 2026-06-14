@@ -19,8 +19,6 @@ struct RootView: View {
                         ChallengeScreen(scenario: scenario)
                     case .result(let result):
                         ResultScreen(result: result)
-                    case .share(let result):
-                        ShareCardScreen(result: result)
                     }
                 }
         }

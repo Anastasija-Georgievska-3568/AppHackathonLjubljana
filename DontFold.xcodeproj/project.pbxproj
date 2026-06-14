@@ -24,7 +24,6 @@
 		754F3C73708582FFB7F6F5A6 /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = E18077662C9249D3897B680E /* PrimaryButton.swift */; };
 		762B10295E3DF083C0D4C210 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827D33FAF0D930FBFC38EFD2 /* SpeechRecognizer.swift */; };
 		770969D8F1404F07BDA8F58B /* Gradients.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E219B72B9A3FEC97329D6D /* Gradients.swift */; };
-		7BFF05F5300D40E0EC3A75BC /* ShareCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F3D79FD0B2057EA39C2D470 /* ShareCardScreen.swift */; };
 		7F0445E3E4EE4C4E461DFD7E /* ResultScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */; };
 		A4191ABB10694592B7D9E1A8 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */; };
 		10ABCDEF1234567890ABCDEF /* PersonaPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */; };
@@ -53,7 +52,6 @@
 		2DAAF4AFC16B16D8A8AC44FB /* DontFoldApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DontFoldApp.swift; sourceTree = "<group>"; };
 		4FE02832EB203F9A0E7F846E /* DontFold.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DontFold.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		78732180061F4DA449BEB291 /* ChallengeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChallengeSession.swift; sourceTree = "<group>"; };
-		7F3D79FD0B2057EA39C2D470 /* ShareCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardScreen.swift; sourceTree = "<group>"; };
 		827D33FAF0D930FBFC38EFD2 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultScreen.swift; sourceTree = "<group>"; };
 		AB361D0906640F0D04599C85 /* TypeOnText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeOnText.swift; sourceTree = "<group>"; };
@@ -82,7 +80,6 @@
 				A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */,
 				FFC7EE10242DC9F1CABBBD0D /* ScenarioDetailScreen.swift */,
 				1722E4F449BD0EEA4FBB966B /* ScenarioListScreen.swift */,
-				7F3D79FD0B2057EA39C2D470 /* ShareCardScreen.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -266,7 +263,6 @@
 				AEE29448B82EC03274FBACEF /* ScenarioDetailScreen.swift in Sources */,
 				1BBEC7F7FF8550AA18B00EFF /* ScenarioListScreen.swift in Sources */,
 				6C0380BD869A50B5F73094D8 /* SessionResult.swift in Sources */,
-				7BFF05F5300D40E0EC3A75BC /* ShareCardScreen.swift in Sources */,
 				762B10295E3DF083C0D4C210 /* SpeechRecognizer.swift in Sources */,
 				1BAE27B1AD01A645DF70245E /* TextToSpeech.swift in Sources */,
 				6BE8BE06AC8DAF9B81ACCEB9 /* Theme.swift in Sources */,

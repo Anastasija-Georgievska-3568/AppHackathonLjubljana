@@ -410,17 +410,19 @@ struct ChallengeScreen: View {
     private func navigateToResult(with verdict: AIVerdict) async {
         guard !endingSession else { return }
         endingSession = true
+        let holisticScore = max(0.0, min(1.0, Double(verdict.finalConfidenceScore) / 100.0))
         let result = SessionResult(
             scenarioTitle: scenario.title,
             scenarioId: scenario.id,
             verdictTitle: verdict.verdictTitle.isEmpty
-                ? VerdictTemplates.fallback(confidence: session.confidence)
+                ? VerdictTemplates.fallback(confidence: holisticScore)
                 : verdict.verdictTitle,
             verdictVibe: verdict.verdictVibe,
             oneLinerToShare: verdict.oneLinerToShare,
-            highlights: verdict.highlights,
+            goodMoments: verdict.goodMoments,
+            improvementAreas: verdict.improvementAreas,
             stats: verdict.stats.map { ResultStat(label: $0.label, value: $0.value, detail: $0.detail) },
-            finalConfidence: session.confidence,
+            finalConfidence: holisticScore,
             transcript: session.turns
         )
         router.push(.result(result))

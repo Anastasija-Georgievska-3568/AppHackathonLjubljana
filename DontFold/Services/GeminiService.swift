@@ -39,18 +39,22 @@ struct AIVerdict: Codable, Sendable {
     let verdictTitle: String
     let verdictVibe: String
     let oneLinerToShare: String
-    let highlights: [String]
+    let finalConfidenceScore: Int   // 0-100, holistic assessment of the whole conversation
+    let goodMoments: [String]
+    let improvementAreas: [String]
     let stats: [VerdictStat]
 
     enum CodingKeys: String, CodingKey {
-        case verdictTitle, verdictVibe, oneLinerToShare, highlights, stats
+        case verdictTitle, verdictVibe, oneLinerToShare, finalConfidenceScore, goodMoments, improvementAreas, stats
     }
 
-    init(verdictTitle: String, verdictVibe: String, oneLinerToShare: String, highlights: [String], stats: [VerdictStat]) {
+    init(verdictTitle: String, verdictVibe: String, oneLinerToShare: String, finalConfidenceScore: Int, goodMoments: [String], improvementAreas: [String], stats: [VerdictStat]) {
         self.verdictTitle = verdictTitle
         self.verdictVibe = verdictVibe
         self.oneLinerToShare = oneLinerToShare
-        self.highlights = highlights
+        self.finalConfidenceScore = finalConfidenceScore
+        self.goodMoments = goodMoments
+        self.improvementAreas = improvementAreas
         self.stats = stats
     }
 
@@ -59,14 +63,23 @@ struct AIVerdict: Codable, Sendable {
         verdictTitle = (try? c.decode(String.self, forKey: .verdictTitle)) ?? ""
         verdictVibe = (try? c.decode(String.self, forKey: .verdictVibe)) ?? ""
         oneLinerToShare = (try? c.decode(String.self, forKey: .oneLinerToShare)) ?? ""
-        if let arr = try? c.decode([String].self, forKey: .highlights) {
-            highlights = arr
-        } else if let s = try? c.decode(String.self, forKey: .highlights) {
-            highlights = [s]
-        } else {
-            highlights = []
-        }
+        finalConfidenceScore = Self.decodeFlexibleInt(c, key: .finalConfidenceScore) ?? 50
+        goodMoments = Self.decodeStringArray(c, key: .goodMoments)
+        improvementAreas = Self.decodeStringArray(c, key: .improvementAreas)
         stats = (try? c.decode([VerdictStat].self, forKey: .stats)) ?? []
+    }
+
+    private static func decodeStringArray(_ c: KeyedDecodingContainer<CodingKeys>, key: CodingKeys) -> [String] {
+        if let arr = try? c.decode([String].self, forKey: key) { return arr }
+        if let s = try? c.decode(String.self, forKey: key) { return [s] }
+        return []
+    }
+
+    private static func decodeFlexibleInt(_ c: KeyedDecodingContainer<CodingKeys>, key: CodingKeys) -> Int? {
+        if let i = try? c.decode(Int.self, forKey: key) { return i }
+        if let d = try? c.decode(Double.self, forKey: key) { return Int(d.rounded()) }
+        if let s = try? c.decode(String.self, forKey: key), let i = Int(s) { return i }
+        return nil
     }
 
     struct VerdictStat: Codable, Sendable {
@@ -195,7 +208,7 @@ actor GeminiService {
             generationConfig: .init(
                 temperature: 0.9,
                 topP: 0.9,
-                maxOutputTokens: 1200,
+                maxOutputTokens: 2500,
                 responseMimeType: "application/json",
                 responseSchema: verdictSchema
             )
@@ -406,7 +419,12 @@ actor GeminiService {
             "verdictTitle": .init(type: "STRING"),
             "verdictVibe": .init(type: "STRING"),
             "oneLinerToShare": .init(type: "STRING"),
-            "highlights": .init(
+            "finalConfidenceScore": .init(type: "INTEGER"),
+            "goodMoments": .init(
+                type: "ARRAY",
+                items: .init(type: "STRING")
+            ),
+            "improvementAreas": .init(
                 type: "ARRAY",
                 items: .init(type: "STRING")
             ),
@@ -424,7 +442,7 @@ actor GeminiService {
                 )
             ),
         ],
-        required: ["verdictTitle", "verdictVibe", "oneLinerToShare", "highlights", "stats"],
+        required: ["verdictTitle", "verdictVibe", "oneLinerToShare", "finalConfidenceScore", "goodMoments", "improvementAreas", "stats"],
         items: nil
     )
 }
@@ -580,6 +598,13 @@ private enum Prompts {
         """
         You are the post-game commentator for "Don't Fold" — a Gen Z communication pressure-test app.
 
+        ⚠️ CRITICAL — MEDIUM CONSTRAINT:
+        This is a voice + text conversation. You only have access to the WORDS the user
+        said/typed. You do NOT see the user. NEVER reference eye contact, body language,
+        posture, facial expressions, smiles, glances, gestures, head shakes, "tone of voice",
+        breathing, or anything physical. Every observation must come from the actual words
+        in the transcript — quote phrases when possible.
+
         The user just attempted this scenario:
         \(scenario.title) — \(scenario.blurb)
         Goal: \(scenario.userGoal)
@@ -605,6 +630,15 @@ private enum Prompts {
           moments of caving.
 
         JSON fields:
+        - finalConfidenceScore: integer 0–100 reflecting the user's overall composure
+          across the WHOLE conversation. USE THE FULL RANGE — don't cluster around 50.
+          Calibration guide:
+          • 90+: Held the room throughout — named numbers, didn't apologize, didn't fold
+          • 70–89: Mostly composed with 1–2 small wobbles
+          • 50–69: Mixed — held some moments, folded others
+          • 30–49: Mostly folded — apologized, hedged, lowered the ask
+          • <30: Total fold from the first turn
+          This score MUST match the tier you're writing for. A roast verdict can't have a 75.
         - verdictTitle: 2-4 word title. Pick from the right tier:
           • CELEBRATE titles: "Main Character Energy", "Quietly Devastating", "Held The
             Room", "Unbothered", "Did The Thing", "Won The Stare-Down".
@@ -617,10 +651,14 @@ private enum Prompts {
           PERFORMANCE TIER. Punchy. Witty. Could land on Twitter.
         - oneLinerToShare: ONE sentence under 80 chars, screenshottable. Match the tier.
           For wins: brag-worthy. For mid: wryly funny. For fold: self-deprecating.
-        - highlights: 2–4 specific moments from the transcript, single lines. MATCH THE TIER.
-          For wins → celebrate ("Named the number without flinching").
-          For folds → call out ("Apologized 3 times before stating the issue").
-          For mid → mix one of each.
+        - goodMoments: 1–3 specific things the user did well, drawn from the transcript.
+          Concrete and single-line ("Named the number without flinching", not "Was confident").
+          For folds, still surface at least 1 moment that worked — something to build on.
+          No fluff, no praise without a specific moment to tie it to.
+        - improvementAreas: 1–3 specific things to do better next time, drawn from the transcript.
+          Concrete and single-line ("Stop apologizing before stating the ask", not "Be more
+          confident"). For wins, still give 1 honest constructive note — they want to improve.
+          Direct, never mean.
         - stats: 3-4 short Spotify-Wrapped style chips with label + value. Examples:
             {label: "FILLER WORDS", value: "2", detail: "controlled"}
             {label: "TIME TO LAND", value: "0:42"}
@@ -686,14 +724,22 @@ enum MockGemini {
 
     static func finalVerdict(scenario: Scenario, transcript: [Turn], finalConfidence: Double) -> AIVerdict {
         let title = VerdictTemplates.fallback(confidence: finalConfidence)
+        // DEBUG: prepend a marker so we can spot mock results visually during development.
+        #if DEBUG
+        let markedTitle = "⚠ " + title
+        #else
+        let markedTitle = title
+        #endif
         return AIVerdict(
-            verdictTitle: title,
-            verdictVibe: "You walked in confident and left… negotiating with yourself. Iconic.",
-            oneLinerToShare: "i went to ask for a raise and accidentally apologized for existing",
-            highlights: [
-                "Apologized before stating the issue",
-                "Softened the ask 2 separate times",
-                "Recovered in the final line — barely",
+            verdictTitle: markedTitle,
+            verdictVibe: "Couldn't reach the recap model — showing a fallback. Try again to get the real read.",
+            oneLinerToShare: "",
+            finalConfidenceScore: Int(finalConfidence * 100),
+            goodMoments: [
+                "Showed up and stayed in the conversation for every turn",
+            ],
+            improvementAreas: [
+                "Try again — the live model couldn't grade this round",
             ],
             stats: [
                 .init(label: "FINAL CONFIDENCE", value: "\(Int(finalConfidence * 100))", detail: nil),

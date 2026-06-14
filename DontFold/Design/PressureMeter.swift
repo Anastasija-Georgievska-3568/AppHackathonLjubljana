@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Segmented 5-pip meter — Hot Girl CEO direction. Each pip is a small
+/// Segmented 10-pip meter — Hot Girl CEO direction. Each pip is a small
 /// ink-outlined rectangle that fills with `tint` when "on".
 private struct SegmentedBar: View {
     var level: Double           // 0…1
     var tint: Color
-    var segments: Int = 5
+    var segments: Int = 10
 
     var filled: Int {
         let clamped = max(0, min(1, level))
@@ -13,7 +13,7 @@ private struct SegmentedBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             ForEach(0..<segments, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(i < filled ? tint : Theme.bg)
@@ -35,10 +35,18 @@ struct ConfidenceMeter: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(label)
-                .font(DFFont.micro(9))
-                .foregroundStyle(Theme.ink)
-                .trackedCaps(1.4)
+            HStack {
+                Text(label)
+                    .font(DFFont.micro(9))
+                    .foregroundStyle(Theme.ink)
+                    .trackedCaps(1.4)
+                Spacer()
+                Text("\(Int(level * 100))")
+                    .font(DFFont.mono(11))
+                    .foregroundStyle(Theme.accent)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.45, dampingFraction: 0.7), value: level)
+            }
             SegmentedBar(level: level, tint: Theme.ink)
         }
     }

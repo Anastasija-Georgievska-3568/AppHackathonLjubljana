@@ -7,7 +7,8 @@ struct SessionResult: Hashable, Codable {
     let verdictTitle: String       // e.g. "Recovering People Pleaser"
     let verdictVibe: String        // 1-2 sentence summary in roast-y Gen Z tone
     let oneLinerToShare: String    // pithy, for the share card
-    let highlights: [String]       // 2-4 quick observations
+    let goodMoments: [String]      // 1-3 things the user did well
+    let improvementAreas: [String] // 1-3 things to work on next time
     let stats: [ResultStat]
     let finalConfidence: Double
     let date: Date
@@ -19,7 +20,8 @@ struct SessionResult: Hashable, Codable {
         verdictTitle: String,
         verdictVibe: String,
         oneLinerToShare: String,
-        highlights: [String],
+        goodMoments: [String],
+        improvementAreas: [String],
         stats: [ResultStat],
         finalConfidence: Double,
         transcript: [Turn]
@@ -30,7 +32,8 @@ struct SessionResult: Hashable, Codable {
         self.verdictTitle = verdictTitle
         self.verdictVibe = verdictVibe
         self.oneLinerToShare = oneLinerToShare
-        self.highlights = highlights
+        self.goodMoments = goodMoments
+        self.improvementAreas = improvementAreas
         self.stats = stats
         self.finalConfidence = finalConfidence
         self.date = Date()
