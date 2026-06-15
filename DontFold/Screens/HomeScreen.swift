@@ -4,6 +4,10 @@ import SwiftUI
 /// Wordmark "DON'T / FOLD." → "pick your hard convo →" → scenario card stack.
 struct HomeScreen: View {
     @Environment(Router.self) private var router
+    @Environment(MenuState.self) private var menu
+    @Environment(LedgerBox.self) private var ledgerBox
+
+    private var ledger: any BillingLedger { ledgerBox.ledger }
 
     var body: some View {
         ZStack {
@@ -11,6 +15,9 @@ struct HomeScreen: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
+                    topRow
+                        .padding(.top, 4)
+
                     wordmark
                         .padding(.top, 12)
 
@@ -30,6 +37,25 @@ struct HomeScreen: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var topRow: some View {
+        HStack(alignment: .center) {
+            HamburgerButton()
+            Spacer()
+            Button { menu.open() } label: {
+                Text(creditsLabel)
+                    .font(DFFont.micro(10))
+                    .foregroundStyle(Theme.ink)
+                    .tracking(0.8)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var creditsLabel: String {
+        let total = ledger.totalRemaining
+        return "\(total) convo\(total == 1 ? "" : "s") left · view packs"
     }
 
     // MARK: - Sections
@@ -127,4 +153,6 @@ struct ScenarioRowCard: View {
 #Preview {
     HomeScreen()
         .environment(Router())
+        .environment(MenuState())
+        .environment(LedgerBox(ledger: LocalBillingLedger()))
 }

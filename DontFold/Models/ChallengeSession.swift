@@ -34,6 +34,7 @@ enum ChallengePhase: Equatable {
 @Observable
 @MainActor
 final class ChallengeSession {
+    let id: UUID = UUID()
     let scenario: Scenario
     var phase: ChallengePhase = .intro
     var turns: [Turn] = []
@@ -42,6 +43,10 @@ final class ChallengeSession {
     var elapsedSeconds: Int = 0
     var maxTurns: Int = 6
     var errorMessage: String?
+
+    /// Counts AI replies that aren't the hardcoded opening line. Used by the
+    /// billing policy: aborting before this hits 2 doesn't deduct a credit.
+    var aiReplyCount: Int = 0
 
     init(scenario: Scenario) {
         self.scenario = scenario
@@ -62,7 +67,9 @@ final class ChallengeSession {
     }
 
     func appendAI(_ text: String, callout: String?) {
+        let isOpening = turns.isEmpty
         turns.append(Turn(speaker: .ai, text: text, callout: callout))
+        if !isOpening { aiReplyCount += 1 }
         if let callout, !callout.isEmpty { lastCallout = callout }
     }
 

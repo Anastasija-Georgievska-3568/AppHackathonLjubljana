@@ -26,6 +26,12 @@
 		770969D8F1404F07BDA8F58B /* Gradients.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E219B72B9A3FEC97329D6D /* Gradients.swift */; };
 		7F0445E3E4EE4C4E461DFD7E /* ResultScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */; };
 		A4191ABB10694592B7D9E1A8 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */; };
+		AA0000000000000001A00001 /* AuthScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000001A00002 /* AuthScreen.swift */; };
+		AA0000000000000002A00001 /* SideMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000002A00002 /* SideMenuView.swift */; };
+		AA0000000000000003A00001 /* PaywallSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000003A00002 /* PaywallSheet.swift */; };
+		AA0000000000000002B00001 /* HamburgerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000002B00002 /* HamburgerButton.swift */; };
+		AA0000000000000002C00001 /* PackCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000002C00002 /* PackCard.swift */; };
+		AA0000000000000002D00001 /* BillingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000002D00002 /* BillingService.swift */; };
 		10ABCDEF1234567890ABCDEF /* PersonaPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */; };
 		A4ACC7436D2704F016DD3CF2 /* MicButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6CE4316F1372D262C542A49 /* MicButton.swift */; };
 		AEE29448B82EC03274FBACEF /* ScenarioDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC7EE10242DC9F1CABBBD0D /* ScenarioDetailScreen.swift */; };
@@ -33,6 +39,11 @@
 		D00290C3BAD1DE0F3FA6A4A5 /* TypeOnText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB361D0906640F0D04599C85 /* TypeOnText.swift */; };
 		DCDA33EE237CF047EEA74685 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FFEE5CA3B642B63DB5FB38A6 /* Assets.xcassets */; };
 		E070AA924655FE70ADC7C8C0 /* GeminiConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20C99E00033E636CC33488B4 /* GeminiConfig.swift */; };
+		AA0000000000000000A00001 /* KeychainStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A00002 /* KeychainStorage.swift */; };
+		AA0000000000000000B00001 /* MenuState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000B00002 /* MenuState.swift */; };
+		AA0000000000000000C00001 /* UserSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000C00002 /* UserSession.swift */; };
+		AA0000000000000000D00001 /* BillingLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000D00002 /* BillingLedger.swift */; };
+		AA0000000000000000E00001 /* SessionHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000E00002 /* SessionHistoryStore.swift */; };
 		F36321AA880089612694D840 /* Chip.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97E2E4B936239D87135DDC7 /* Chip.swift */; };
 		FE86B6D2622CD8BA2E545349 /* TranscriptAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84FAD7FEA6E0D8933575E1E /* TranscriptAnalyzer.swift */; };
 /* End PBXBuildFile section */
@@ -46,7 +57,18 @@
 		186A8CF62680043AD15D9AF9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		18EE071F23609B6A4ACCC24C /* ChallengeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChallengeScreen.swift; sourceTree = "<group>"; };
 		20C99E00033E636CC33488B4 /* GeminiConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiConfig.swift; sourceTree = "<group>"; };
+		AA0000000000000000A00002 /* KeychainStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStorage.swift; sourceTree = "<group>"; };
+		AA0000000000000000B00002 /* MenuState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuState.swift; sourceTree = "<group>"; };
+		AA0000000000000000C00002 /* UserSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSession.swift; sourceTree = "<group>"; };
+		AA0000000000000000D00002 /* BillingLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingLedger.swift; sourceTree = "<group>"; };
+		AA0000000000000000E00002 /* SessionHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHistoryStore.swift; sourceTree = "<group>"; };
 		2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		AA0000000000000001A00002 /* AuthScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthScreen.swift; sourceTree = "<group>"; };
+		AA0000000000000002A00002 /* SideMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenuView.swift; sourceTree = "<group>"; };
+		AA0000000000000003A00002 /* PaywallSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallSheet.swift; sourceTree = "<group>"; };
+		AA0000000000000002B00002 /* HamburgerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HamburgerButton.swift; sourceTree = "<group>"; };
+		AA0000000000000002C00002 /* PackCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackCard.swift; sourceTree = "<group>"; };
+		AA0000000000000002D00002 /* BillingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingService.swift; sourceTree = "<group>"; };
 		20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaPickerScreen.swift; sourceTree = "<group>"; };
 		2D2EA60526B9607E096E350A /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 		2DAAF4AFC16B16D8A8AC44FB /* DontFoldApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DontFoldApp.swift; sourceTree = "<group>"; };
@@ -74,12 +96,15 @@
 		059229D14829F836D44366E5 /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000001A00002 /* AuthScreen.swift */,
 				18EE071F23609B6A4ACCC24C /* ChallengeScreen.swift */,
 				2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */,
 				20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */,
 				A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */,
 				FFC7EE10242DC9F1CABBBD0D /* ScenarioDetailScreen.swift */,
 				1722E4F449BD0EEA4FBB966B /* ScenarioListScreen.swift */,
+				AA0000000000000003A00002 /* PaywallSheet.swift */,
+				AA0000000000000002A00002 /* SideMenuView.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -97,8 +122,10 @@
 		15BE7B1CFC620550DF2EB201 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000002D00002 /* BillingService.swift */,
 				20C99E00033E636CC33488B4 /* GeminiConfig.swift */,
 				2D2EA60526B9607E096E350A /* GeminiService.swift */,
+				AA0000000000000000A00002 /* KeychainStorage.swift */,
 				827D33FAF0D930FBFC38EFD2 /* SpeechRecognizer.swift */,
 				17FA62666EF0A36444A5E842 /* TextToSpeech.swift */,
 				F84FAD7FEA6E0D8933575E1E /* TranscriptAnalyzer.swift */,
@@ -112,6 +139,8 @@
 				C97E2E4B936239D87135DDC7 /* Chip.swift */,
 				F4078B4DCC6DB73F96F617BB /* GlassCard.swift */,
 				E5E219B72B9A3FEC97329D6D /* Gradients.swift */,
+				AA0000000000000002B00002 /* HamburgerButton.swift */,
+				AA0000000000000002C00002 /* PackCard.swift */,
 				F6CE4316F1372D262C542A49 /* MicButton.swift */,
 				E98E1438A805B5409164595C /* PressureMeter.swift */,
 				E18077662C9249D3897B680E /* PrimaryButton.swift */,
@@ -133,10 +162,14 @@
 		397F8B2FE7DD3BAFCC587709 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000000D00002 /* BillingLedger.swift */,
 				78732180061F4DA449BEB291 /* ChallengeSession.swift */,
+				AA0000000000000000B00002 /* MenuState.swift */,
 				D888041D57080862446A1BB6 /* Scenario.swift */,
 				15452ABE5F9C6FAEB94DE37C /* ScenarioCatalog.swift */,
+				AA0000000000000000E00002 /* SessionHistoryStore.swift */,
 				10972486968769AA9A8BEB99 /* SessionResult.swift */,
+				AA0000000000000000C00002 /* UserSession.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -248,9 +281,20 @@
 				6EDA90C22BFD39012A64518E /* DontFoldApp.swift in Sources */,
 				E070AA924655FE70ADC7C8C0 /* GeminiConfig.swift in Sources */,
 				52CFA8316B23F063ADD7A0FC /* GeminiService.swift in Sources */,
+				AA0000000000000000A00001 /* KeychainStorage.swift in Sources */,
+				AA0000000000000000B00001 /* MenuState.swift in Sources */,
+				AA0000000000000000C00001 /* UserSession.swift in Sources */,
+				AA0000000000000000D00001 /* BillingLedger.swift in Sources */,
+				AA0000000000000000E00001 /* SessionHistoryStore.swift in Sources */,
 				31E5D4EFF8472F9CC5E559EC /* GlassCard.swift in Sources */,
 				770969D8F1404F07BDA8F58B /* Gradients.swift in Sources */,
 				A4191ABB10694592B7D9E1A8 /* HomeScreen.swift in Sources */,
+				AA0000000000000001A00001 /* AuthScreen.swift in Sources */,
+				AA0000000000000002A00001 /* SideMenuView.swift in Sources */,
+				AA0000000000000003A00001 /* PaywallSheet.swift in Sources */,
+				AA0000000000000002B00001 /* HamburgerButton.swift in Sources */,
+				AA0000000000000002C00001 /* PackCard.swift in Sources */,
+				AA0000000000000002D00001 /* BillingService.swift in Sources */,
 				10ABCDEF1234567890ABCDEF /* PersonaPickerScreen.swift in Sources */,
 				A4ACC7436D2704F016DD3CF2 /* MicButton.swift in Sources */,
 				227FDC083425F831E319127C /* PressureMeter.swift in Sources */,
@@ -330,6 +374,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = DontFold/DontFold.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
@@ -419,6 +464,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = DontFold/DontFold.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;

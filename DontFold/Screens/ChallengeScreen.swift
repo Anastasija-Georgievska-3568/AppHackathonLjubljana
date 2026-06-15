@@ -8,6 +8,7 @@ import SwiftUI
 struct ChallengeScreen: View {
     let scenario: Scenario
     @Environment(Router.self) private var router
+    @Environment(LedgerBox.self) private var ledgerBox
 
     @State private var session: ChallengeSession
     @State private var speech = SpeechRecognizer()
@@ -15,6 +16,8 @@ struct ChallengeScreen: View {
     @State private var sending: Bool = false
     @State private var endingSession: Bool = false
     @FocusState private var textFocused: Bool
+
+    private var ledger: any BillingLedger { ledgerBox.ledger }
 
     init(scenario: Scenario) {
         self.scenario = scenario
@@ -431,6 +434,14 @@ struct ChallengeScreen: View {
     private func abort() async {
         _ = try? await speech.stop()
         await TextToSpeech.shared.stop()
+        // Conversation policy: only deduct a credit when the conversation got
+        // far enough to be genuine (AI replied at least twice past the opening).
+        if session.aiReplyCount >= 2 {
+            ledger.consumeCredit(
+                scenarioId: scenario.id,
+                sessionId: session.id.uuidString
+            )
+        }
         router.pop()
     }
 }

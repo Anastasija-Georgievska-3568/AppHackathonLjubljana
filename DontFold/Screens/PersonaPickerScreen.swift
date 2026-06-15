@@ -38,6 +38,7 @@ struct PersonaPickerScreen: View {
 
     private var backRow: some View {
         HStack {
+            HamburgerButton()
             Spacer()
             Button { router.pop() } label: {
                 Text("←")
@@ -107,4 +108,5 @@ struct PersonaRowCard: View {
 #Preview {
     PersonaPickerScreen(scenario: ScenarioCatalog.all.first!)
         .environment(Router())
+        .environment(MenuState())
 }

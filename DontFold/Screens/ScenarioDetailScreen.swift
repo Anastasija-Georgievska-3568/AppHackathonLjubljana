@@ -6,6 +6,10 @@ import SwiftUI
 struct ScenarioDetailScreen: View {
     let scenario: Scenario
     @Environment(Router.self) private var router
+    @Environment(LedgerBox.self) private var ledgerBox
+    @State private var showPaywall = false
+
+    private var ledger: any BillingLedger { ledgerBox.ledger }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -35,6 +39,7 @@ struct ScenarioDetailScreen: View {
 
     private var statusRow: some View {
         HStack {
+            HamburgerButton()
             Spacer()
             Button { router.pop() } label: {
                 Text("←")
@@ -137,7 +142,11 @@ struct ScenarioDetailScreen: View {
 
     private var startCTA: some View {
         Button {
-            router.push(.challenge(scenario))
+            if ledger.totalRemaining > 0 {
+                router.push(.challenge(scenario))
+            } else {
+                showPaywall = true
+            }
         } label: {
             GlassCard(padding: 12, highlighted: true) {
                 Text("start challenge")
@@ -149,6 +158,9 @@ struct ScenarioDetailScreen: View {
             }
         }
         .buttonStyle(.plain)
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet()
+        }
     }
 
     // MARK: - Helpers

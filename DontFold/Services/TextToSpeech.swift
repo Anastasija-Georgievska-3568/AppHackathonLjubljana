@@ -18,7 +18,12 @@ final class TextToSpeech: NSObject {
 
     /// Speak `text` using the OpenAI voice named in `voiceHint`. If the hint is
     /// nil/empty we default to `alloy`. Returns when playback finishes (or fails).
+    /// Honors the `settings.voice` AppStorage flag — returns immediately if the
+    /// user has disabled voice playback in the drawer.
     func speak(_ text: String, voiceHint: String? = nil) async {
+        let voiceEnabled = UserDefaults.standard.object(forKey: "settings.voice") as? Bool ?? true
+        guard voiceEnabled else { return }
+
         let voice = Self.openAIVoice(from: voiceHint)
         if GeminiConfig.hasKey {
             do {

@@ -7,10 +7,15 @@ import SwiftUI
 struct ResultScreen: View {
     let result: SessionResult
     @Environment(Router.self) private var router
+    @Environment(LedgerBox.self) private var ledgerBox
+    @Environment(SessionHistoryStore.self) private var history
 
     @State private var heroAppeared = false
     @State private var verdictAppeared = false
     @State private var cardsAppeared = false
+    @State private var hasFinalized = false
+
+    private var ledger: any BillingLedger { ledgerBox.ledger }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -41,18 +46,33 @@ struct ResultScreen: View {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.05)) { heroAppeared = true }
             withAnimation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.3)) { verdictAppeared = true }
             withAnimation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.5)) { cardsAppeared = true }
+            finalizeOnce()
         }
+    }
+
+    /// Reaching the result screen is what counts as "conversation completed"
+    /// in the billing policy — deduct a credit and persist the session to
+    /// the local history. Idempotent so swipe-back-and-forward doesn't re-fire.
+    private func finalizeOnce() {
+        guard !hasFinalized else { return }
+        hasFinalized = true
+        ledger.consumeCredit(
+            scenarioId: result.scenarioId,
+            sessionId: result.id.uuidString
+        )
+        history.append(result)
     }
 
     // MARK: - Sections
 
     private var statusRow: some View {
         HStack {
+            HamburgerButton()
+            Spacer()
             Text("RESULT")
                 .font(DFFont.micro(10))
                 .foregroundStyle(Theme.ink)
                 .tracking(1.0)
-            Spacer()
         }
     }
 
