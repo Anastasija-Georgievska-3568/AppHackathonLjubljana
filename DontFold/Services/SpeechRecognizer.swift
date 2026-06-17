@@ -34,6 +34,10 @@ final class SpeechRecognizer {
             state = .unauthorized("Speech recognition not authorized.")
             return false
         }
+
+
+ 
+
         let micAuth: Bool = await withCheckedContinuation { cont in
             if #available(iOS 17.0, *) {
                 AVAudioApplication.requestRecordPermission { granted in cont.resume(returning: granted) }
@@ -48,14 +52,28 @@ final class SpeechRecognizer {
         return true
     }
 
+
     func start() async throws {
         try await stop()
         transcript = ""
-        guard let recognizer, recognizer.isAvailable else {
-            throw NSError(domain: "Speech", code: 1, userInfo: [NSLocalizedDescriptionKey: "Speech recognizer unavailable."])
-        }
-        let granted = await requestAuthorization()
+         let granted = await requestAuthorization()
         guard granted else { return }
+
+        guard let recognizer else {
+            throw NSError(domain: "Speech", code: 1, userInfo: [NSLocalizedDescriptionKey: "Speech recognizer unavailable for this locale."])
+        }
+
+        // `isAvailable` flips to true asynchronously after authorization, once
+        // the recognizer connects to the speech service. Wait briefly for it
+        // instead of failing on the first instant.
+        if !recognizer.isAvailable {
+            for _ in 0..<10 where !recognizer.isAvailable {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s, up to 1s total
+            }
+        }
+        guard recognizer.isAvailable else {
+            throw NSError(domain: "Speech", code: 1, userInfo: [NSLocalizedDescriptionKey: "Speech recognizer unavailable. Check your network connection, or run on a real device."])
+        }
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -63,6 +81,11 @@ final class SpeechRecognizer {
 
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
+        // Prefer on-device recognition when supported: works offline and avoids
+        // the server round-trip that fails when unavailable/offline.
+        if recognizer.supportsOnDeviceRecognition {
+            req.requiresOnDeviceRecognition = true
+        }
         self.request = req
 
         let inputNode = audioEngine.inputNode
