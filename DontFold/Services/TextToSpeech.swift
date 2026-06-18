@@ -23,14 +23,19 @@ final class TextToSpeech: NSObject {
         if GeminiConfig.hasKey {
             do {
                 let data = try await Self.fetchOpenAIAudio(text: text, voice: voice)
+                // Cancelled mid-fetch (e.g. the user tapped the mic) — don't grab
+                // the audio session to play, the recorder needs it.
+                if Task.isCancelled { return }
                 await playAndWait(data)
                 return
             } catch {
+                if Task.isCancelled { return } // bail silently, no fallback voice
                 #if DEBUG
                 print("[TTS/OpenAI] \(error.localizedDescription) — falling back to AVSpeech")
                 #endif
             }
         }
+        if Task.isCancelled { return }
         await speakFallback(text)
     }
 

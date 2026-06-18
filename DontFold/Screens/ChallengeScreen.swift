@@ -14,6 +14,7 @@ struct ChallengeScreen: View {
     @State private var inputText: String = ""
     @State private var sending: Bool = false
     @State private var endingSession: Bool = false
+    @State private var speakTask: Task<Void, Never>?
     @FocusState private var textFocused: Bool
 
     init(scenario: Scenario) {
@@ -121,7 +122,7 @@ struct ChallengeScreen: View {
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 8) {
                     ForEach(session.turns) { turn in
-                        bubble(for: turn)
+                        bubble(for: turn, isLast: turn.id == session.turns.last?.id)
                             .id(turn.id)
                     }
                     if sending {
@@ -147,13 +148,13 @@ struct ChallengeScreen: View {
     }
 
     @ViewBuilder
-    private func bubble(for turn: Turn) -> some View {
+    private func bubble(for turn: Turn, isLast: Bool) -> some View {
         if turn.speaker == .ai {
             HStack(alignment: .top, spacing: 6) {
                 Circle()
                     .fill(Theme.accent)
                     .frame(width: 18, height: 18)
-                themBubble(text: turn.text)
+                themBubble(text: turn.text, animated: isLast)
                 Spacer(minLength: 28)
             }
         } else {
@@ -164,18 +165,32 @@ struct ChallengeScreen: View {
         }
     }
 
-    private func themBubble(text: String) -> some View {
-        Text(text)
-            .font(DFFont.body(16))
-            .foregroundStyle(Theme.ink)
-            .multilineTextAlignment(.leading)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Theme.bubbleGray)
-            )
-            .fixedSize(horizontal: false, vertical: true)
+    @ViewBuilder
+    private func themBubble(text: String, animated: Bool) -> some View {
+        Group {
+            if animated {
+                // Types on immediately, independent of the voice — so the reply
+                // never sits in silence while OpenAI TTS spins up.
+                TypeOnText(
+                    text: text,
+                    charactersPerSecond: 26,
+                    font: DFFont.body(16),
+                    color: Theme.ink
+                )
+            } else {
+                Text(text)
+                    .font(DFFont.body(16))
+                    .foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Theme.bubbleGray)
+        )
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func youBubble(text: String) -> some View {
@@ -327,6 +342,11 @@ struct ChallengeScreen: View {
             session.phase = .sending
             await sendUserText(text)
         } else {
+            // Release the audio session from the AI voice (and cancel any pending
+            // TTS fetch) before switching it to recording — otherwise a
+            // late-arriving clip hijacks the session and the mic hears nothing.
+            speakTask?.cancel()
+            await TextToSpeech.shared.stop()
             do {
                 try await speech.start()
                 session.phase = .userRecording
@@ -379,7 +399,8 @@ struct ChallengeScreen: View {
                 let verdict = await verdictTask
                 await navigateToResult(with: verdict)
             } else {
-                Task.detached { @MainActor in
+                speakTask?.cancel()
+                speakTask = Task { @MainActor in
                     await TextToSpeech.shared.speak(resp.say, voiceHint: self.scenario.aiVoiceHint)
                 }
                 session.phase = .awaitingUser
@@ -429,6 +450,7 @@ struct ChallengeScreen: View {
     }
 
     private func abort() async {
+        speakTask?.cancel()
         _ = try? await speech.stop()
         await TextToSpeech.shared.stop()
         router.pop()

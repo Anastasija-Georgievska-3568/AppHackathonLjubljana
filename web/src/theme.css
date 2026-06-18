@@ -1,0 +1,579 @@
+/* Hot Girl CEO palette — ported from Design/Theme.swift.
+   Cream surface, ink text/borders, hot-pink accent. Hard outlines over shadows. */
+:root {
+  --bg: #fffdf7;
+  --bg-elevated: #ffe6f0;
+  --surface-hi: #ffe6f0;
+  --ink: #0d0d0d;
+  --accent: #ff2d87;
+  --accent2: #ff7ab6;
+  --accent3: #ffd6e6;
+  --warning: #c41e3a;
+  --text-primary: #0d0d0d;
+  --text-secondary: #33312d;
+  --text-muted: rgba(51, 49, 45, 0.55);
+  --stroke: rgba(13, 13, 13, 0.85);
+  --bubble-gray: #f0f0f0;
+
+  --font-display: "Avenir Next", "Helvetica Neue", system-ui, -apple-system,
+    sans-serif;
+  --radius: 22px;
+  --radius-sm: 14px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--ink);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Phone frame: the app lives in a centered portrait column. On real phones the
+   viewport is <= 430px so it fills edge-to-edge; on a medium window it centers. */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- typography ---- */
+.df-kicker {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.df-display {
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.df-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.df-body {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.df-micro {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* ---- card / outline system ---- */
+.card {
+  background: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.card.pink {
+  background: var(--bg-elevated);
+}
+
+/* ---- buttons ---- */
+.btn {
+  appearance: none;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 15px 22px;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn.ghost {
+  background: var(--bg);
+  color: var(--ink);
+}
+.btn.block {
+  width: 100%;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon-btn {
+  appearance: none;
+  background: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+/* ---- layout helpers ---- */
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 16px;
+  overflow-y: auto;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+}
+.spacer {
+  flex: 1;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  background: var(--bg);
+}
+.tag.pink {
+  background: var(--accent);
+  color: #fff;
+}
+.tag.soft {
+  background: var(--accent3);
+}
+
+/* ---- scenario rows ---- */
+.scenario-card {
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  cursor: pointer;
+  appearance: none;
+  font-family: inherit;
+}
+.scenario-card.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- persona grid ---- */
+.persona-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.persona-card {
+  text-align: left;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  appearance: none;
+  font-family: inherit;
+  min-height: 150px;
+}
+.persona-card.selected {
+  background: var(--accent);
+  color: #fff;
+}
+.persona-card.selected .df-micro,
+.persona-card.selected .weak {
+  color: rgba(255, 255, 255, 0.85);
+}
+.weak {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+/* ---- challenge ---- */
+.aurora {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0.5;
+  animation: drift 9s ease-in-out infinite;
+}
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(24px, -30px) scale(1.18);
+  }
+}
+
+.bubble {
+  border: 2px solid var(--ink);
+  border-radius: 20px;
+  padding: 14px 16px;
+  max-width: 86%;
+  line-height: 1.4;
+  font-size: 16px;
+}
+.bubble.ai {
+  background: var(--bg);
+  align-self: flex-start;
+  border-bottom-left-radius: 6px;
+}
+.bubble.user {
+  background: var(--accent);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 6px;
+}
+.bubble.listening {
+  background: var(--bg);
+  border-style: dashed;
+  align-self: flex-end;
+  color: var(--text-muted);
+}
+.bubble.thinking {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--accent);
+}
+.bubble.thinking span {
+  animation: blink 1.2s ease-in-out infinite both;
+}
+.bubble.thinking span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.bubble.thinking span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.callout {
+  align-self: center;
+  background: var(--accent3);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  max-width: 90%;
+  text-align: center;
+}
+
+.transcript {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 4px 2px;
+  z-index: 1;
+}
+
+/* ---- meter ---- */
+.meter-wrap {
+  z-index: 1;
+}
+.meter-track {
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bubble-gray);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.4s ease;
+}
+
+/* ---- mic ---- */
+.mic-zone {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.mic-btn {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: var(--accent);
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 4px 4px 0 var(--ink);
+  position: relative;
+}
+.mic-btn.recording {
+  background: var(--warning);
+}
+.mic-btn.recording::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 2px solid var(--warning);
+  animation: pulse 1.2s ease-out infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.text-input-row {
+  display: flex;
+  gap: 8px;
+  z-index: 1;
+}
+.text-input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 15px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: var(--bg);
+  resize: none;
+}
+
+/* ---- result ---- */
+.verdict-hero {
+  text-align: center;
+  padding: 26px 20px;
+}
+.score-ring {
+  font-size: 52px;
+  font-weight: 900;
+  color: var(--accent);
+  line-height: 1;
+}
+.chip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.chip {
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: var(--bg);
+}
+.chip .v {
+  font-size: 22px;
+  font-weight: 900;
+}
+.list-item {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 4px 0;
+}
+.list-item .dot {
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.fadein {
+  animation: fadein 0.4s ease both;
+}
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.center-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+.banner {
+  font-size: 12px;
+  text-align: center;
+  padding: 8px 12px;
+  background: var(--accent3);
+  border-bottom: 2px solid var(--ink);
+  color: var(--text-secondary);
+}
+
+/* ===========================================================================
+   BIG SCREEN — split two-pane layout. Phone rules above are untouched; these
+   only kick in at >= 900px. The app becomes a wide framed "console" with a
+   context sidebar (left) and the interaction surface (right).
+   ========================================================================== */
+@media (min-width: 900px) {
+  #root {
+    align-items: center;
+    padding: 24px;
+  }
+  .app-shell.desk-shell {
+    max-width: 1140px;
+    width: 100%;
+    min-height: 0;
+    height: min(860px, 92dvh);
+    border: 3px solid var(--ink);
+    border-radius: 30px;
+    box-shadow: 12px 12px 0 var(--accent);
+    display: block;
+  }
+
+  .desk {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: var(--aside-w, 400px) 1fr;
+    height: 100%;
+  }
+  .desk--wide-aside {
+    --aside-w: 480px;
+  }
+  .desk > .aside,
+  .desk > .main {
+    height: 100%;
+    overflow-y: auto;
+    padding: 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .desk > .aside {
+    border-right: 3px solid var(--ink);
+    background: rgba(255, 230, 240, 0.45);
+  }
+
+  /* On desktop the display headline can breathe. */
+  .desk .df-display {
+    font-size: 46px;
+  }
+  .desk .verdict-hero .df-display {
+    font-size: 40px;
+  }
+  .desk .score-ring {
+    font-size: 64px;
+  }
+
+  /* Scenario list becomes a 2-up grid when there's room. */
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* Persona grid gets more columns on the wide pane. */
+  .desk .persona-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  /* Transcript fills the main pane; input pinned at the bottom of it. */
+  .desk .main .transcript {
+    min-height: 0;
+  }
+
+  /* Anything tagged phone-only disappears on desktop, and vice-versa. */
+  .phone-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 899px) {
+  .desktop-only {
+    display: none !important;
+  }
+}

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0217482EE611264FBA3226B0 /* ChallengeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78732180061F4DA449BEB291 /* ChallengeSession.swift */; };
+		10ABCDEF1234567890ABCDEF /* PersonaPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */; };
 		1BAE27B1AD01A645DF70245E /* TextToSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FA62666EF0A36444A5E842 /* TextToSpeech.swift */; };
 		1BBEC7F7FF8550AA18B00EFF /* ScenarioListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1722E4F449BD0EEA4FBB966B /* ScenarioListScreen.swift */; };
 		1FE9930050F7F3EB81BF2287 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F9CFFADC3D0E4B184D2431 /* Typography.swift */; };
@@ -26,7 +27,6 @@
 		770969D8F1404F07BDA8F58B /* Gradients.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E219B72B9A3FEC97329D6D /* Gradients.swift */; };
 		7F0445E3E4EE4C4E461DFD7E /* ResultScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */; };
 		A4191ABB10694592B7D9E1A8 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */; };
-		10ABCDEF1234567890ABCDEF /* PersonaPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */; };
 		A4ACC7436D2704F016DD3CF2 /* MicButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6CE4316F1372D262C542A49 /* MicButton.swift */; };
 		AEE29448B82EC03274FBACEF /* ScenarioDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC7EE10242DC9F1CABBBD0D /* ScenarioDetailScreen.swift */; };
 		B5AE3B420ECEEAC635ED06BF /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84CA174682964BA3FD64A07 /* Router.swift */; };
@@ -46,11 +46,11 @@
 		186A8CF62680043AD15D9AF9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		18EE071F23609B6A4ACCC24C /* ChallengeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChallengeScreen.swift; sourceTree = "<group>"; };
 		20C99E00033E636CC33488B4 /* GeminiConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiConfig.swift; sourceTree = "<group>"; };
-		2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		20FEDCBA9876543210FEDCBA /* PersonaPickerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaPickerScreen.swift; sourceTree = "<group>"; };
+		2CBD2C95D3C2DAFB29C4F6B9 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		2D2EA60526B9607E096E350A /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 		2DAAF4AFC16B16D8A8AC44FB /* DontFoldApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DontFoldApp.swift; sourceTree = "<group>"; };
-		4FE02832EB203F9A0E7F846E /* DontFold.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DontFold.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FE02832EB203F9A0E7F846E /* DontFold.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DontFold.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		78732180061F4DA449BEB291 /* ChallengeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChallengeSession.swift; sourceTree = "<group>"; };
 		827D33FAF0D930FBFC38EFD2 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		A6BF10DB26AD73B8EB218089 /* ResultScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultScreen.swift; sourceTree = "<group>"; };
@@ -202,7 +202,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					B8D028684F9CCD8C1A383F08 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -281,6 +280,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = S84KD8654X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DontFold/Resources/Info.plist;
@@ -370,6 +370,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = S84KD8654X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DontFold/Resources/Info.plist;

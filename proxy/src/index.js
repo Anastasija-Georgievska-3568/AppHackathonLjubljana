@@ -3,26 +3,54 @@ const MODEL = "gemini-2.5-flash";
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 const TTS_MODEL = "tts-1-hd";
 
+// CORS so the web client (different origin) can call the proxy from a browser.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-App-Token",
+  "Access-Control-Max-Age": "86400",
+};
+
+function withCors(resp) {
+  const headers = new Headers(resp.headers);
+  for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
+  return new Response(resp.body, { status: resp.status, headers });
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    // Preflight: browsers send OPTIONS before a POST with custom headers.
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     if (request.method !== "POST") {
-      return new Response("Not found", { status: 404 });
+      return withCors(new Response("Not found", { status: 404 }));
     }
 
     const url = new URL(request.url);
     const path = url.pathname;
-    if (path !== "/turn" && path !== "/verdict" && path !== "/tts") {
-      return new Response("Not found", { status: 404 });
+    if (
+      path !== "/turn" &&
+      path !== "/verdict" &&
+      path !== "/tts" &&
+      path !== "/track"
+    ) {
+      return withCors(new Response("Not found", { status: 404 }));
     }
 
     // Only our app (with the token) may use the proxy.
     const token = request.headers.get("X-App-Token");
     if (!token || token !== env.APP_TOKEN) {
-      return new Response("Unauthorized", { status: 401 });
+      return withCors(new Response("Unauthorized", { status: 401 }));
+    }
+
+    if (path === "/track") {
+      return withCors(await handleTrack(request, env, ctx));
     }
 
     if (path === "/tts") {
-      return handleTTS(request, env);
+      return withCors(await handleTTS(request, env));
     }
 
     // Forward the body the app built straight to Gemini.
@@ -36,12 +64,50 @@ export default {
       body,
     });
 
-    return new Response(resp.body, {
+    return withCors(new Response(resp.body, {
       status: resp.status,
       headers: { "Content-Type": "application/json" },
-    });
+    }));
   },
 };
+
+// Lightweight usage counters. The web client beacons {event, scenario} when a
+// challenge starts ("start") and when a verdict is reached ("complete").
+// Counts live in KV; read them with `wrangler kv key get`. Increments use a
+// read-modify-write (good enough for demo scale — a rare race may undercount).
+async function handleTrack(request, env, ctx) {
+  if (!env.STATS) return new Response(null, { status: 204 });
+
+  let payload = {};
+  try {
+    payload = await request.json();
+  } catch {
+    /* tolerate empty/bad body */
+  }
+  const event = ["start", "complete"].includes(payload.event)
+    ? payload.event
+    : "start";
+  const scenario = String(payload.scenario || "unknown").slice(0, 40);
+  const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const keys = [
+    `count:${event}:total`,
+    `count:${event}:day:${day}`,
+    `count:${event}:scenario:${scenario}`,
+  ];
+
+  const work = Promise.all(keys.map((k) => incr(env.STATS, k)));
+  // Don't make the user wait on the write.
+  if (ctx?.waitUntil) ctx.waitUntil(work);
+  else await work;
+
+  return new Response(null, { status: 204 });
+}
+
+async function incr(kv, key) {
+  const current = parseInt((await kv.get(key)) || "0", 10) || 0;
+  await kv.put(key, String(current + 1));
+}
 
 async function handleTTS(request, env) {
   if (!env.OPENAI_API_KEY) {

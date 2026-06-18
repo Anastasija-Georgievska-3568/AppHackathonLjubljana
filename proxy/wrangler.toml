@@ -1,3 +1,8 @@
 name = "dontfold-proxy"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
+
+# Counters for usage tracking (read with `wrangler kv key get`).
+[[kv_namespaces]]
+binding = "STATS"
+id = "d9c460e08e8a46b3a635161de9fd4189"

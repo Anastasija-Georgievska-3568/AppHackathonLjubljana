@@ -1,0 +1,452 @@
+// Web port of DontFold/Services/GeminiService.swift + GeminiConfig + TextToSpeech.
+// Builds the exact same Gemini request bodies and posts them to the Cloudflare
+// Worker proxy, which forwards to Gemini / OpenAI. The app token is shipped in
+// the iOS binary too — same exposure, fine for a demo.
+
+const PROXY_BASE = import.meta.env.DEV
+  ? "/proxy" // vite proxies to the worker (no CORS in dev)
+  : "https://dontfold-proxy.dontfold.workers.dev";
+
+const APP_TOKEN =
+  "1e5ba1cb1fea44ab80d52b05984206fd8d8d86db42ea24b0208415b6732337df";
+
+// ---- Schemas (Gemini structured output) -----------------------------------
+
+const TURN_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    say: { type: "STRING" },
+    confidenceDelta: { type: "INTEGER" },
+    callout: { type: "STRING", nullable: true },
+    shouldEnd: { type: "BOOLEAN" },
+  },
+  required: ["say", "confidenceDelta", "shouldEnd"],
+};
+
+const VERDICT_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    verdictTitle: { type: "STRING" },
+    verdictVibe: { type: "STRING" },
+    oneLinerToShare: { type: "STRING" },
+    finalConfidenceScore: { type: "INTEGER" },
+    goodMoments: { type: "ARRAY", items: { type: "STRING" } },
+    improvementAreas: { type: "ARRAY", items: { type: "STRING" } },
+    stats: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          label: { type: "STRING" },
+          value: { type: "STRING" },
+          detail: { type: "STRING", nullable: true },
+        },
+        required: ["label", "value"],
+      },
+    },
+  },
+  required: [
+    "verdictTitle",
+    "verdictVibe",
+    "oneLinerToShare",
+    "finalConfidenceScore",
+    "goodMoments",
+    "improvementAreas",
+    "stats",
+  ],
+};
+
+// ---- Prompts (ported verbatim) --------------------------------------------
+
+function turnSystemPrompt(s) {
+  return `You are role-playing a character in a Gen-Z communication-pressure-test app called "Don't Fold".
+
+ROLE: ${s.aiPersona}
+SCENE: ${s.setup}
+USER'S GOAL: ${s.userGoal}
+
+Your behavior in role:
+- Stay in character, never break the fourth wall.
+- Be realistic. Push the user when they're vague; ease off when they hold their ground.
+- RESPONSE LENGTH — turn-aware:
+  • Turn 1 (first time the user states their ask): 2–3 sentences. You just heard something.
+    React to what they actually said — process it, push on it, show your character's
+    specific texture. Don't snap to your dismissal move immediately.
+  • Turns 2+: 1–2 sentences. You've sized them up. Get sharper and more characteristic.
+  • Hard cap: never more than 3 sentences. Never bullet points or lists.
+- SOUND HUMAN:
+  • Use contractions and natural speech patterns.
+  • React to specific words or phrases the user just said — quote them back, challenge
+    them, or use them to redirect.
+  • Let personality leak through: hesitations ('...'), interruptions ('Right, but—'),
+    character-specific verbal tics.
+  • Never summarize what they said back to them ('I understand you want a raise —').
+  • Don't start your line with 'I'. Lead with a reaction.
+  • Banned openers: 'Certainly', 'Of course', 'Great', 'I see', 'That's fair'.
+
+Watch for and react to these pressure cues from the user:
+${s.pressureCues.map((c) => `- ${c}`).join("\n")}
+
+Watch for and reward these confidence cues:
+${s.confidenceCues.map((c) => `- ${c}`).join("\n")}
+
+Scoring rules — return JSON:
+- say: your in-character spoken response, 1–2 sentences max
+- confidenceDelta: integer in [-30, +20]. Reward clarity and holding the line, penalize hedging and folding.
+- callout: optional 1-line Gen-Z sass observation about what the user JUST did wrong — only when it's funny/true (e.g. "you apologized before explaining the issue"). Null if user did fine.
+- shouldEnd: true when the scene reaches a natural close OR after ~6-8 user turns.
+
+TONE for callouts: think Spotify Wrapped sass + Duolingo owl. Witty, knowing, NOT mean. NOT therapist-speak.
+
+Return JSON only — the schema is enforced.`;
+}
+
+function finalTurnAddendum() {
+  return `⚠️ FINAL TURN — THIS IS THE LAST EXCHANGE.
+
+The user has no more turns. Deliver a DEFINITIVE in-character OUTCOME.
+
+Outcome rules:
+- Decide based on how the user actually performed across the whole conversation:
+    • Clear, confident, specific, didn't fold → they get what they wanted.
+    • Hedged, apologized, vague, lowered the ask, talked themselves out of it → they don't.
+    • Mixed → partial win (e.g. "we can do 65 not 75, take it or leave it").
+- State the outcome plainly.
+- 1–2 sentences MAX. In character.
+- ABSOLUTELY NO QUESTIONS. No "does that work?" No "what do you think?"
+- NO open-ended deflection ("we'll see", "let me check") unless that itself IS the (bad) outcome.
+- \`shouldEnd\` MUST be true.
+- \`callout\` should be null OR a final summary observation, not a new criticism.`;
+}
+
+function verdictSystemPrompt(s) {
+  return `You are the post-game commentator for "Don't Fold" — a Gen Z communication pressure-test app.
+
+⚠️ CRITICAL — MEDIUM CONSTRAINT:
+This is a voice + text conversation. You only have access to the WORDS the user
+said/typed. You do NOT see the user. NEVER reference eye contact, body language,
+posture, facial expressions, smiles, glances, gestures, head shakes, "tone of voice",
+breathing, or anything physical. Every observation must come from the actual words
+in the transcript — quote phrases when possible.
+
+The user just attempted this scenario:
+${s.title} — ${s.blurb}
+Goal: ${s.userGoal}
+
+Generate a recap card. Tone: Spotify Wrapped sass + internet humor.
+Stylistically: bold, short, screenshottable, NOT corporate, NOT therapist-y, NOT mean.
+
+⚠️ CRITICAL — TONE MUST MATCH PERFORMANCE.
+The user's final confidence score tells you how they actually did.
+Read it FIRST, then pick tone:
+
+• Confidence ≥ 70 → CELEBRATE. Hype them. NO roasting. NO criticism.
+• Confidence 40–69 → MIXED. Wry, balanced. Acknowledge what worked AND what wobbled.
+• Confidence < 40 → ROAST (kindly). They folded. Lean into the sass.
+
+JSON fields:
+- finalConfidenceScore: integer 0–100 reflecting the user's overall composure
+  across the WHOLE conversation. USE THE FULL RANGE — don't cluster around 50.
+  This score MUST match the tier you're writing for. A roast verdict can't have a 75.
+- verdictTitle: 2-4 word title in the right tier (e.g. "Main Character Energy",
+  "Held The Line (Barely)", "Recovering People Pleaser").
+- verdictVibe: ONE sentence (max 22 words) capturing the energy at that tier. Punchy.
+- oneLinerToShare: ONE sentence under 80 chars, screenshottable. Match the tier.
+- goodMoments: 1–3 specific things the user did well, drawn from the transcript.
+  Concrete and single-line. For folds, still surface at least 1 moment that worked.
+- improvementAreas: 1–3 specific things to do better next time, drawn from the transcript.
+  Concrete and single-line. Direct, never mean.
+- stats: 3-4 short Spotify-Wrapped style chips with label + value. Examples:
+    {label: "FILLER WORDS", value: "2", detail: "controlled"}
+    {label: "FINAL VIBE", value: "Composed"}.
+
+Return JSON only.`;
+}
+
+function verdictUserPrompt(transcript, finalConfidence) {
+  const convo = transcript
+    .map((t) => `${t.speaker === "ai" ? "AI" : "USER"}: ${t.text}`)
+    .join("\n");
+  const c = Math.round(finalConfidence * 100);
+  let tier;
+  if (c >= 70) tier = "CELEBRATE — the user held strong. Hype them.";
+  else if (c >= 40) tier = "MIXED — partial win. Wry, balanced tone.";
+  else tier = "ROAST — they folded. Lean into the sass.";
+  return `Final confidence: ${c}/100
+→ Tier for this recap: ${tier}
+
+Transcript:
+${convo}`;
+}
+
+// ---- HTTP plumbing ---------------------------------------------------------
+
+function contentsFromHistory(history) {
+  // Gemini wants the trimmed sequence to start with a user message.
+  let trimmed = history.slice(-16);
+  while (trimmed.length > 1 && trimmed[0].speaker === "ai") trimmed.shift();
+  return trimmed.map((t) => ({
+    role: t.speaker === "ai" ? "model" : "user",
+    parts: [{ text: t.text }],
+  }));
+}
+
+async function callProxy(path, body) {
+  const resp = await fetch(`${PROXY_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-App-Token": APP_TOKEN,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    const err = new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    err.status = resp.status;
+    throw err;
+  }
+  const data = await resp.json();
+  const text = (data.candidates?.[0]?.content?.parts || [])
+    .map((p) => p.text)
+    .filter(Boolean)
+    .join("");
+  if (!text) throw new Error("Empty response from model");
+  return text;
+}
+
+// Pull a JSON object out of whatever the model returned (fences, prose,
+// truncation). Mirrors GeminiService.extractJSON.
+export function extractJSON(raw) {
+  let s = raw.trim();
+  if (s.charCodeAt(0) === 0xfeff) s = s.slice(1);
+  if (s.startsWith("```") || s.startsWith("~~~")) {
+    const nl = s.indexOf("\n");
+    if (nl !== -1) s = s.slice(nl + 1);
+    if (s.endsWith("```")) s = s.slice(0, -3);
+    if (s.endsWith("~~~")) s = s.slice(0, -3);
+    s = s.trim();
+  }
+  const first = s.indexOf("{");
+  if (first === -1) return s;
+  s = s.slice(first);
+
+  let depth = 0,
+    inString = false,
+    escape = false,
+    end = -1;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (escape) escape = false;
+    else if (ch === "\\" && inString) escape = true;
+    else if (ch === '"') inString = !inString;
+    else if (!inString) {
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+  }
+  if (end !== -1) s = s.slice(0, end);
+  else if (depth > 0) {
+    if (inString) s += '"';
+    s += "}".repeat(depth);
+  }
+  s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+  return s.trim();
+}
+
+// ---- Public API ------------------------------------------------------------
+
+export async function nextTurn(scenario, history, isFinalTurn = false) {
+  // First turn is the curated opening line (free, in-character).
+  if (history.length === 0) {
+    return {
+      say: scenario.openingLine,
+      confidenceDelta: 0,
+      callout: null,
+      shouldEnd: false,
+    };
+  }
+  const systemPrompt = isFinalTurn
+    ? `${turnSystemPrompt(scenario)}\n\n${finalTurnAddendum()}`
+    : turnSystemPrompt(scenario);
+  const body = {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: contentsFromHistory(history),
+    generationConfig: {
+      temperature: 0.92,
+      topP: 0.9,
+      maxOutputTokens: 700,
+      responseMimeType: "application/json",
+      responseSchema: TURN_SCHEMA,
+    },
+  };
+  try {
+    const raw = await callProxy("/turn", body);
+    const obj = JSON.parse(extractJSON(raw));
+    return {
+      say: obj.say || "",
+      confidenceDelta: toInt(obj.confidenceDelta, 0),
+      callout: obj.callout || null,
+      shouldEnd: !!obj.shouldEnd,
+    };
+  } catch (e) {
+    if (isRetryable(e)) return mockTurn(scenario, history);
+    throw e;
+  }
+}
+
+export async function finalVerdict(scenario, transcript, finalConfidence) {
+  const body = {
+    systemInstruction: { parts: [{ text: verdictSystemPrompt(scenario) }] },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: verdictUserPrompt(transcript, finalConfidence) }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.9,
+      topP: 0.9,
+      maxOutputTokens: 2500,
+      responseMimeType: "application/json",
+      responseSchema: VERDICT_SCHEMA,
+    },
+  };
+  try {
+    const raw = await callProxy("/verdict", body);
+    const o = JSON.parse(extractJSON(raw));
+    return {
+      verdictTitle: o.verdictTitle || "",
+      verdictVibe: o.verdictVibe || "",
+      oneLinerToShare: o.oneLinerToShare || "",
+      finalConfidenceScore: toInt(o.finalConfidenceScore, 50),
+      goodMoments: asStringArray(o.goodMoments),
+      improvementAreas: asStringArray(o.improvementAreas),
+      stats: (o.stats || []).map((s) => ({
+        label: s.label || "",
+        value: String(s.value ?? ""),
+        detail: s.detail || null,
+      })),
+    };
+  } catch (e) {
+    return mockVerdict(transcript, finalConfidence);
+  }
+}
+
+// OpenAI TTS via the proxy. Returns an object URL for an <audio> element, or
+// null if TTS is unavailable (caller falls back to browser speechSynthesis).
+export async function fetchTTS(text, voiceHint) {
+  const voice = (voiceHint || "alloy").split(",")[0].trim() || "alloy";
+  try {
+    const resp = await fetch(`${PROXY_BASE}/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-App-Token": APP_TOKEN },
+      body: JSON.stringify({ voice, input: text }),
+    });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
+// Fire-and-forget usage beacon. event: "start" | "complete".
+export function track(event, scenarioId) {
+  try {
+    fetch(`${PROXY_BASE}/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-App-Token": APP_TOKEN },
+      body: JSON.stringify({ event, scenario: scenarioId }),
+      keepalive: true, // still sends if the page is closing
+    }).catch(() => {});
+  } catch {
+    /* never let tracking break the app */
+  }
+}
+
+// ---- helpers / mock fallback ----------------------------------------------
+
+function toInt(v, fallback) {
+  if (typeof v === "number") return Math.round(v);
+  if (typeof v === "string" && v.trim() !== "" && !isNaN(+v))
+    return Math.round(+v);
+  return fallback;
+}
+function asStringArray(v) {
+  if (Array.isArray(v)) return v.map(String);
+  if (typeof v === "string") return [v];
+  return [];
+}
+function isRetryable(e) {
+  const s = e?.status;
+  return s === 429 || (s >= 500 && s <= 599);
+}
+
+function mockTurn(scenario, history) {
+  const userTurns = history.filter((t) => t.speaker === "user").length;
+  if (userTurns === 0)
+    return {
+      say: scenario.openingLine,
+      confidenceDelta: 0,
+      callout: null,
+      shouldEnd: false,
+    };
+  const lines = [
+    "Mm. Can you be more specific?",
+    "Okay — and what does that look like in practice?",
+    "Right. So what are you actually asking for?",
+    "Sure, sure. But — concretely?",
+  ];
+  const callouts = [
+    "you apologized before answering 🙃",
+    "filler word count just spiked",
+    "you softened the ask mid-sentence",
+    "the silence was working FOR you and you broke it",
+  ];
+  const lastUser =
+    [...history].reverse().find((t) => t.speaker === "user")?.text.toLowerCase() ||
+    "";
+  const folded =
+    lastUser.includes("sorry") ||
+    lastUser.includes("just") ||
+    lastUser.includes("kind of") ||
+    lastUser.includes("maybe");
+  return {
+    say: lines[Math.floor(Math.random() * lines.length)],
+    confidenceDelta: folded ? -10 : 6,
+    callout: folded
+      ? callouts[Math.floor(Math.random() * callouts.length)]
+      : null,
+    shouldEnd: userTurns >= 6,
+  };
+}
+
+function mockVerdict(transcript, finalConfidence) {
+  const c = Math.round(finalConfidence * 100);
+  const title =
+    c >= 70 ? "Held The Room" : c >= 40 ? "Held The Line (Barely)" : "Folded On Impact";
+  return {
+    verdictTitle: title,
+    verdictVibe:
+      "Couldn't reach the recap model — showing a fallback. Try again to get the real read.",
+    oneLinerToShare: "",
+    finalConfidenceScore: c,
+    goodMoments: ["Showed up and stayed in the conversation for every turn"],
+    improvementAreas: ["Try again — the live model couldn't grade this round"],
+    stats: [
+      { label: "FINAL CONFIDENCE", value: String(c), detail: null },
+      {
+        label: "TURNS",
+        value: String(transcript.filter((t) => t.speaker === "user").length),
+        detail: null,
+      },
+    ],
+  };
+}
