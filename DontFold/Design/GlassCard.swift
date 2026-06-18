@@ -23,18 +23,21 @@ struct GlassCard<Content: View>: View {
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
+                // Apply the sticker shadow to the card *shape* only — not the
+                // whole view — otherwise the offset shadow is cast on every
+                // glyph and the text reads as doubled.
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(fill)
+                    .shadow(
+                        color: offsetShadow ? Theme.ink.opacity(0.9) : .clear,
+                        radius: 0,
+                        x: offsetShadow ? 3 : 0,
+                        y: offsetShadow ? 3 : 0
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(Theme.ink, lineWidth: borderWidth)
-            )
-            .shadow(
-                color: offsetShadow ? Theme.ink.opacity(0.9) : .clear,
-                radius: 0,
-                x: offsetShadow ? 3 : 0,
-                y: offsetShadow ? 3 : 0
             )
     }
 }

@@ -147,8 +147,8 @@ struct ResultScreen: View {
                     .foregroundStyle(Theme.accent)
                     .multilineTextAlignment(.center)
                     .tracking(-0.5)
+                    .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
-                    .minimumScaleFactor(0.7)
                 if !result.verdictVibe.isEmpty {
                     Text(result.verdictVibe)
                         .font(DFFont.body(14))
