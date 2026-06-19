@@ -1,27 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import { nextTurn, finalVerdict, fetchTTS, track } from "./api.js";
-import { createRecognizer, speechSupported } from "./speech.js";
+import { nextTurn, finalVerdict, fetchTTS, transcribe, track } from "./api.js";
 import { ConfidenceMeter, TypeOnText, MicButton } from "./components.jsx";
+
+// Voice works in every browser that can record audio (we transcribe server-side
+// via Whisper) — unlike the built-in Web Speech API, which Firefox/Brave block.
+const supportsVoice =
+  typeof navigator !== "undefined" &&
+  !!navigator.mediaDevices?.getUserMedia &&
+  typeof window !== "undefined" &&
+  typeof window.MediaRecorder !== "undefined";
 
 const MAX_TURNS = 6;
 
 export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
   const [turns, setTurns] = useState([]); // {speaker, text, callout}
   const [confidence, setConfidence] = useState(0.55);
-  const [phase, setPhase] = useState("intro"); // intro | aiSpeaking | awaiting | recording | sending | finished
-  const [partial, setPartial] = useState("");
+  const [phase, setPhase] = useState("intro"); // intro | aiSpeaking | awaiting | recording | transcribing | sending | finished
   const [draft, setDraft] = useState("");
-  const [typed, setTyped] = useState(false);
   const [error, setError] = useState(null);
   const [revealSpeed, setRevealSpeed] = useState(40); // ms per char for type-on
 
   const audioRef = useRef(null);
-  const recRef = useRef(null);
+  const mediaRecRef = useRef(null);
+  const chunksRef = useRef([]);
+  const streamRef = useRef(null);
+  const partialBusyRef = useRef(false); // one interim transcription in flight at a time
+  const lastPartialRef = useRef(""); // latest interim transcript (fallback on stop)
   const transcriptEndRef = useRef(null);
   const startedRef = useRef(false);
 
   const userTurnCount = turns.filter((t) => t.speaker === "user").length;
-  const supportsVoice = speechSupported();
 
   // Kick off with the AI's opening line.
   useEffect(() => {
@@ -31,14 +39,15 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     runAITurn([]);
     return () => {
       audioRef.current?.pause();
-      recRef.current?.stop();
+      try { mediaRecRef.current?.stop(); } catch { /* ignore */ }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [turns, partial]);
+  }, [turns, phase]);
 
   // Fetch the TTS clip AND read its duration up front, so the text can be
   // revealed in lockstep with the voice instead of finishing in silence.
@@ -139,7 +148,6 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     if (!trimmed) return;
     // Cut off any AI voice still playing so it doesn't talk over the user.
     if (audioRef.current) { try { audioRef.current.pause(); } catch { /* ignore */ } }
-    setPartial("");
     setDraft("");
     const userTurn = { speaker: "user", text: trimmed, callout: null };
     const history = [...turns, userTurn];
@@ -148,31 +156,62 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     runAITurn(history);
   }
 
-  function toggleRecord() {
+  // Record mic audio, then transcribe it server-side (Whisper) on stop.
+  async function toggleRecord() {
     if (phase === "recording") {
-      recRef.current?.stop();
+      try { mediaRecRef.current?.stop(); } catch { /* ignore */ }
       return;
     }
-    setPartial("");
-    const rec = createRecognizer({
-      onPartial: setPartial,
-      onFinal: (finalText) => {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setError("Microphone blocked — allow access or type instead.");
+      return;
+    }
+    streamRef.current = stream;
+    chunksRef.current = [];
+    partialBusyRef.current = false;
+    lastPartialRef.current = "";
+    setDraft("");
+    const mr = new MediaRecorder(stream);
+    mediaRecRef.current = mr;
+    mr.ondataavailable = (e) => {
+      if (e.data.size) chunksRef.current.push(e.data);
+      // Pseudo-live: transcribe the audio-so-far and show it in the input bar.
+      // Throttled to one request at a time so we never pile up calls.
+      if (!partialBusyRef.current && chunksRef.current.length && mr.state === "recording") {
+        partialBusyRef.current = true;
+        const soFar = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        transcribe(soFar).then((text) => {
+          partialBusyRef.current = false;
+          if (text && mediaRecRef.current === mr && mr.state === "recording") {
+            lastPartialRef.current = text;
+            setDraft(text);
+          }
+        });
+      }
+    };
+    mr.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+      setPhase("transcribing");
+      const text = (await transcribe(blob)) || lastPartialRef.current.trim();
+      setDraft("");
+      if (text) submitUser(text);
+      else {
+        setError("Couldn't catch that — try again or type.");
         setPhase("awaiting");
-        if (finalText) submitUser(finalText);
-      },
-      onError: () => setPhase("awaiting"),
-    });
-    if (!rec) {
-      setTyped(true);
-      return;
-    }
-    recRef.current = rec;
-    rec.start();
+      }
+    };
+    setError(null);
+    mr.start(2000); // emit a chunk every 2s -> drives the live transcript
     setPhase("recording");
   }
 
   const lastCallout = [...turns].reverse().find((t) => t.callout)?.callout;
-  const inputDisabled = phase === "sending" || phase === "aiSpeaking";
+  const inputDisabled =
+    phase === "sending" || phase === "aiSpeaking" || phase === "transcribing";
 
   const turnsBadge = (
     <span className="tag">{Math.min(userTurnCount, MAX_TURNS)}/{MAX_TURNS}</span>
@@ -196,8 +235,8 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
       {lastCallout && phase !== "finished" && (
         <div className="callout fadein" key={lastCallout}>👀 {lastCallout}</div>
       )}
-      {phase === "recording" && (
-        <div className="bubble listening">{partial || "listening…"}</div>
+      {phase === "transcribing" && (
+        <div className="bubble listening">transcribing…</div>
       )}
       {(phase === "aiSpeaking" || phase === "sending") && (
         <div className="bubble ai thinking"><span>•</span><span>•</span><span>•</span></div>
@@ -206,15 +245,17 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     </div>
   );
 
+  const recording = phase === "recording";
+  const hasDraft = draft.trim().length > 0;
   const inputEl =
     phase === "finished" ? (
       <div className="df-micro" style={{ textAlign: "center" }}>scoring your round…</div>
-    ) : typed || !supportsVoice ? (
-      <div className="text-input-row">
+    ) : (
+      <div className="input-bar">
         <textarea
           className="text-input"
-          rows={2}
-          placeholder="Type your response…"
+          rows={1}
+          placeholder={recording ? "listening…" : "type if speaking feels like too much…"}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -224,17 +265,22 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
             }
           }}
           disabled={inputDisabled}
+          readOnly={recording}
         />
-        <button className="btn primary" disabled={inputDisabled || !draft.trim()} onClick={() => submitUser(draft)}>
-          Send
-        </button>
-      </div>
-    ) : (
-      <div className="mic-zone">
-        <MicButton recording={phase === "recording"} disabled={inputDisabled} onClick={toggleRecord} />
-        <button className="df-micro" style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setTyped(true)}>
-          or type instead
-        </button>
+        {recording ? (
+          <MicButton recording disabled={false} onClick={toggleRecord} />
+        ) : hasDraft ? (
+          <button
+            className="mic-btn send"
+            disabled={inputDisabled}
+            onClick={() => submitUser(draft)}
+            aria-label="Send"
+          >
+            ↑
+          </button>
+        ) : supportsVoice ? (
+          <MicButton recording={false} disabled={inputDisabled} onClick={toggleRecord} />
+        ) : null}
       </div>
     );
 

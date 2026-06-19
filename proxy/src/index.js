@@ -2,6 +2,8 @@ const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODEL = "gemini-2.5-flash";
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 const TTS_MODEL = "tts-1-hd";
+const OPENAI_STT_URL = "https://api.openai.com/v1/audio/transcriptions";
+const STT_MODEL = "whisper-1";
 
 // CORS so the web client (different origin) can call the proxy from a browser.
 const CORS_HEADERS = {
@@ -34,6 +36,7 @@ export default {
       path !== "/turn" &&
       path !== "/verdict" &&
       path !== "/tts" &&
+      path !== "/stt" &&
       path !== "/track"
     ) {
       return withCors(new Response("Not found", { status: 404 }));
@@ -51,6 +54,10 @@ export default {
 
     if (path === "/tts") {
       return withCors(await handleTTS(request, env));
+    }
+
+    if (path === "/stt") {
+      return withCors(await handleSTT(request, env));
     }
 
     // Forward the body the app built straight to Gemini.
@@ -149,5 +156,50 @@ async function handleTTS(request, env) {
   return new Response(resp.body, {
     status: 200,
     headers: { "Content-Type": "audio/mpeg" },
+  });
+}
+
+// Speech-to-text via OpenAI Whisper. The web client records mic audio with
+// MediaRecorder and POSTs the raw blob here (works in every modern browser,
+// unlike the built-in Web Speech API). Returns { text }.
+async function handleSTT(request, env) {
+  if (!env.OPENAI_API_KEY) {
+    return new Response("STT not configured", { status: 503 });
+  }
+
+  const contentType = request.headers.get("Content-Type") || "audio/webm";
+  const buf = await request.arrayBuffer();
+  if (!buf || buf.byteLength === 0) {
+    return new Response("Empty audio", { status: 400 });
+  }
+
+  const ext = contentType.includes("mp4")
+    ? "mp4"
+    : contentType.includes("ogg")
+    ? "ogg"
+    : contentType.includes("wav")
+    ? "wav"
+    : "webm";
+
+  const form = new FormData();
+  form.append("file", new Blob([buf], { type: contentType }), `audio.${ext}`);
+  form.append("model", STT_MODEL);
+  form.append("response_format", "json");
+
+  const resp = await fetch(OPENAI_STT_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: form,
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    return new Response(text, { status: resp.status });
+  }
+
+  const data = await resp.json();
+  return new Response(JSON.stringify({ text: data.text || "" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
   });
 }

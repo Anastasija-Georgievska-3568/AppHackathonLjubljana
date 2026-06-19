@@ -54,7 +54,17 @@ export function MicButton({ recording, disabled, onClick }) {
       disabled={disabled}
       aria-label={recording ? "Stop" : "Speak"}
     >
-      {recording ? "■" : "🎤"}
+      {recording ? (
+        <span className="mic-stop" />
+      ) : (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="2" width="6" height="11" rx="3" fill="#fff" stroke="#fff" />
+          <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+          <line x1="12" y1="18" x2="12" y2="22" />
+          <line x1="8" y1="22" x2="16" y2="22" />
+        </svg>
+      )}
     </button>
   );
 }

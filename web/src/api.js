@@ -357,6 +357,27 @@ export async function fetchTTS(text, voiceHint) {
   }
 }
 
+// Speech-to-text via the proxy (OpenAI Whisper). Takes a recorded audio Blob,
+// returns the transcript string ("" on failure). Works in every browser that
+// can record audio — unlike the built-in Web Speech API.
+export async function transcribe(blob) {
+  try {
+    const resp = await fetch(`${PROXY_BASE}/stt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": blob.type || "audio/webm",
+        "X-App-Token": APP_TOKEN,
+      },
+      body: blob,
+    });
+    if (!resp.ok) return "";
+    const data = await resp.json();
+    return (data.text || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 // Fire-and-forget usage beacon. event: "start" | "complete".
 export function track(event, scenarioId) {
   try {
