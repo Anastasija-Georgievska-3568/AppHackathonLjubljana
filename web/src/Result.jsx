@@ -1,6 +1,4 @@
-import { Aurora } from "./components.jsx";
-
-export default function Result({ result, onReplay, onHome, isDesktop }) {
+export default function Result({ result, onReplay, onHome }) {
   const { verdict, finalConfidence } = result;
   const score = verdict.finalConfidenceScore ?? Math.round(finalConfidence * 100);
   const tierColor =
@@ -82,31 +80,9 @@ export default function Result({ result, onReplay, onHome, isDesktop }) {
     </>
   );
 
-  if (isDesktop) {
-    return (
-      <div className="app-shell desk-shell">
-        <Aurora intensity={score / 100} />
-        <div className="desk">
-          <aside className="aside">
-            {hero}
-            <div className="spacer" />
-            {actions}
-          </aside>
-          <section className="main">
-            {shareCard}
-            {stats}
-            {good}
-            {improve}
-          </section>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
-      <Aurora intensity={score / 100} />
-      <div className="screen" style={{ position: "relative" }}>
+      <div className="screen">
         {hero}
         {shareCard}
         {stats}

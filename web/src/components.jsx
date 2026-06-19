@@ -1,18 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 
-// Confidence meter — color shifts hot-pink with value (mirrors ConfidenceMeter.swift).
+// Confidence meter — 10 segmented bars (mirrors ConfidenceMeter.swift).
+const METER_SEGMENTS = 10;
 export function ConfidenceMeter({ value }) {
   const pct = Math.round(value * 100);
-  const color =
-    value < 0.4 ? "var(--warning)" : value < 0.7 ? "var(--accent2)" : "var(--accent)";
+  const filled = Math.round(value * METER_SEGMENTS);
   return (
     <div className="meter-wrap">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
         <span className="df-micro">CONFIDENCE</span>
-        <span className="df-micro" style={{ color }}>{pct}</span>
+        <span className="df-micro" style={{ color: "var(--ink)" }}>{pct}</span>
       </div>
       <div className="meter-track">
-        <div className="meter-fill" style={{ width: `${pct}%`, background: color }} />
+        {Array.from({ length: METER_SEGMENTS }, (_, i) => (
+          <div
+            key={i}
+            className="meter-seg"
+            style={{ background: i < filled ? "var(--ink)" : "transparent" }}
+          />
+        ))}
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { SCENARIOS, resolveScenario } from "./scenarios.js";
-import { Aurora } from "./components.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import Challenge from "./Challenge.jsx";
 import Result from "./Result.jsx";
@@ -49,7 +48,7 @@ export default function App() {
         />
       );
     default:
-      return <Home isDesktop={isDesktop} onOpen={openScenario} />;
+      return <Home onOpen={openScenario} />;
   }
 
   function openScenario(scenario) {
@@ -67,15 +66,19 @@ function ScenarioCard({ s, onOpen }) {
       className={`card scenario-card${s.comingSoon ? " locked" : ""}`}
       onClick={() => onOpen(s)}
     >
-      <div className="row">
-        <span className="tag soft">{s.personaTypeLabel || "scenario"}</span>
-        {s.comingSoon && <span className="tag">🔒 coming soon</span>}
-        {s.personas?.length > 0 && !s.comingSoon && (
-          <span className="tag pink">{s.personas.length} personas</span>
-        )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div className="df-title">{s.title}</div>
+        {s.comingSoon
+          ? <span className="df-kicker" style={{ color: "var(--accent)", marginTop: 3, whiteSpace: "nowrap" }}>COMING SOON</span>
+          : <span style={{ color: "var(--accent)", fontSize: 22, fontWeight: 900, lineHeight: 1 }}>↗</span>
+        }
       </div>
-      <div className="df-title" style={{ marginTop: 4 }}>{s.title}</div>
       <div className="df-body">{s.blurb}</div>
+      {s.personas?.length > 0 && !s.comingSoon && (
+        <div className="df-micro" style={{ color: "var(--accent)", marginTop: 4 }}>
+          {s.personas.length} {(s.personaTypeLabel || "scenario").toUpperCase()} PERSONAS
+        </div>
+      )}
     </button>
   );
 }
@@ -88,8 +91,6 @@ function PersonaCard({ p, selected, onClick }) {
     >
       <div className="df-title" style={{ fontSize: 17 }}>{p.label}</div>
       <div className="df-body" style={{ fontSize: 13, color: "inherit" }}>{p.description}</div>
-      <div className="spacer" />
-      <div className="weak">⚠ {p.weakpoint}</div>
     </button>
   );
 }
@@ -97,53 +98,24 @@ function PersonaCard({ p, selected, onClick }) {
 function HeroIntro() {
   return (
     <>
-      <div className="df-kicker">A GEN-Z PRESSURE TEST</div>
-      <h1 className="df-display" style={{ marginTop: 8 }}>
-        Don't<br />Fold.
+      <h1 className="df-display wordmark" style={{ marginBottom: 8 }}>
+        DON'T<br />
+        <span style={{ color: "var(--accent)" }}>FOLD.</span>
       </h1>
-      <p className="df-body" style={{ marginTop: 10 }}>
-        Real-life moments that make you sweat. Hold your ground out loud — get a
-        Wrapped-style read on whether you folded.
-      </p>
+      <div className="df-kicker" style={{ color: "var(--ink)" }}>CHOOSE YOUR HARD CONVO →</div>
     </>
   );
 }
 
 /* ---- Home ---- */
 
-function Home({ isDesktop, onOpen }) {
-  const list = SCENARIOS.map((s) => <ScenarioCard key={s.id} s={s} onOpen={onOpen} />);
-
-  if (isDesktop) {
-    return (
-      <div className="app-shell desk-shell">
-        <Aurora intensity={0.5} />
-        <div className="desk desk--wide-aside">
-          <aside className="aside">
-            <HeroIntro />
-            <div className="spacer" />
-            <div className="df-micro">built for the room you're dreading</div>
-          </aside>
-          <section className="main">
-            <div className="df-micro">CHOOSE YOUR PRESSURE</div>
-            <div className="scenario-grid">{list}</div>
-          </section>
-        </div>
-      </div>
-    );
-  }
-
+function Home({ onOpen }) {
   return (
     <div className="app-shell">
-      <Aurora intensity={0.5} />
-      <div className="screen" style={{ position: "relative" }}>
-        <div style={{ marginTop: 8 }}>
-          <HeroIntro />
-        </div>
-        <div className="df-micro" style={{ marginTop: 8 }}>CHOOSE YOUR PRESSURE</div>
-        {list}
-        <div className="df-micro" style={{ textAlign: "center", marginTop: 8 }}>
-          built for the room you're dreading
+      <div className="screen">
+        <HeroIntro />
+        <div className="scenario-grid">
+          {SCENARIOS.map((s) => <ScenarioCard key={s.id} s={s} onOpen={onOpen} />)}
         </div>
       </div>
     </div>
@@ -172,37 +144,14 @@ function PersonaPicker({ isDesktop, scenario, onBack, onPick }) {
     </button>
   );
 
-  if (isDesktop) {
-    return (
-      <div className="app-shell desk-shell">
-        <Aurora intensity={0.5} />
-        <div className="desk">
-          <aside className="aside">
-            <div className="topbar">
-              <button className="icon-btn" onClick={onBack}>←</button>
-              <div className="df-micro">{scenario.title}</div>
-            </div>
-            <h1 className="df-display">Pick your<br />opponent.</h1>
-            <p className="df-body">Each one breaks you a different way. Choose who you're up against.</p>
-            <div className="spacer" />
-            {cta}
-          </aside>
-          <section className="main">{grid}</section>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
-      <Aurora intensity={0.5} />
-      <div className="screen" style={{ position: "relative" }}>
+      <div className="screen">
         <div className="topbar">
           <button className="icon-btn" onClick={onBack}>←</button>
           <div className="df-micro">{scenario.title}</div>
         </div>
         <h1 className="df-display">Pick your<br />opponent.</h1>
-        <p className="df-body">Each one breaks you a different way. Choose who you're up against.</p>
         {grid}
         <div className="spacer" />
         {cta}
@@ -249,41 +198,13 @@ function Brief({ isDesktop, scenario, onBack, onStart }) {
     <button className="btn primary block" onClick={onStart}>I'm ready — start</button>
   );
 
-  if (isDesktop) {
-    return (
-      <div className="app-shell desk-shell">
-        <Aurora intensity={0.5} />
-        <div className="desk">
-          <aside className="aside">
-            <div className="topbar">
-              <button className="icon-btn" onClick={onBack}>←</button>
-              <div className="df-micro">THE BRIEF</div>
-            </div>
-            <span className="tag soft">{scenario.personaTypeLabel || "scenario"}</span>
-            <h1 className="df-display">{scenario.title}</h1>
-            {sceneCard}
-            <div className="spacer" />
-            {startBtn}
-          </aside>
-          <section className="main">
-            {personaCard}
-            {goalCard}
-            {avoidCard}
-          </section>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
-      <Aurora intensity={0.5} />
-      <div className="screen" style={{ position: "relative" }}>
+      <div className="screen">
         <div className="topbar">
           <button className="icon-btn" onClick={onBack}>←</button>
           <div className="df-micro">THE BRIEF</div>
         </div>
-        <span className="tag soft">{scenario.personaTypeLabel || "scenario"}</span>
         <h1 className="df-display">{scenario.title}</h1>
         {sceneCard}
         {personaCard}

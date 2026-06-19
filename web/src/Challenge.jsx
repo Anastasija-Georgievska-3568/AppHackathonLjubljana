@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { nextTurn, finalVerdict, fetchTTS, track } from "./api.js";
 import { createRecognizer, speechSupported } from "./speech.js";
-import { ConfidenceMeter, TypeOnText, MicButton, Aurora } from "./components.jsx";
+import { ConfidenceMeter, TypeOnText, MicButton } from "./components.jsx";
 
 const MAX_TURNS = 6;
 
@@ -242,44 +242,8 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     <div className="df-micro" style={{ color: "var(--warning)" }}>{error}</div>
   );
 
-  if (isDesktop) {
-    return (
-      <div className="app-shell desk-shell">
-        <Aurora intensity={1 - confidence} />
-        <div className="desk">
-          <aside className="aside">
-            <div className="topbar">
-              <button className="icon-btn" onClick={onExit}>←</button>
-              <div className="df-micro">THE ROOM</div>
-              <div className="spacer" />
-              {turnsBadge}
-            </div>
-            <span className="tag soft">{scenario.personaLabel || scenario.personaTypeLabel}</span>
-            <h1 className="df-display" style={{ fontSize: 30 }}>{scenario.title}</h1>
-            <div className="card pink" style={{ padding: 16 }}>
-              <div className="df-kicker">THE SCENE</div>
-              <p className="df-body" style={{ marginTop: 6 }}>{scenario.setup}</p>
-            </div>
-            <div className="card" style={{ padding: 16 }}>
-              <div className="df-kicker">YOUR GOAL</div>
-              <p className="df-body" style={{ marginTop: 6 }}>{scenario.userGoal}</p>
-            </div>
-            <div className="spacer" />
-            <ConfidenceMeter value={confidence} />
-          </aside>
-          <section className="main">
-            {transcriptEl}
-            {errorEl}
-            {inputEl}
-          </section>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
-      <Aurora intensity={1 - confidence} />
       <div className="screen" style={{ position: "relative" }}>
         <div className="topbar">
           <button className="icon-btn" onClick={onExit}>←</button>
