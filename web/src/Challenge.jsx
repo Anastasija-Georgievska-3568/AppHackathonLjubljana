@@ -24,8 +24,6 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
   const mediaRecRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
-  const partialBusyRef = useRef(false); // one interim transcription in flight at a time
-  const lastPartialRef = useRef(""); // latest interim transcript (fallback on stop)
   const transcriptEndRef = useRef(null);
   const startedRef = useRef(false);
 
@@ -171,33 +169,15 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     }
     streamRef.current = stream;
     chunksRef.current = [];
-    partialBusyRef.current = false;
-    lastPartialRef.current = "";
     setDraft("");
     const mr = new MediaRecorder(stream);
     mediaRecRef.current = mr;
-    mr.ondataavailable = (e) => {
-      if (e.data.size) chunksRef.current.push(e.data);
-      // Pseudo-live: transcribe the audio-so-far and show it in the input bar.
-      // Throttled to one request at a time so we never pile up calls.
-      if (!partialBusyRef.current && chunksRef.current.length && mr.state === "recording") {
-        partialBusyRef.current = true;
-        const soFar = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
-        transcribe(soFar).then((text) => {
-          partialBusyRef.current = false;
-          if (text && mediaRecRef.current === mr && mr.state === "recording") {
-            lastPartialRef.current = text;
-            setDraft(text);
-          }
-        });
-      }
-    };
+    mr.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
     mr.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
       const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
       setPhase("transcribing");
-      const text = (await transcribe(blob)) || lastPartialRef.current.trim();
-      setDraft("");
+      const text = await transcribe(blob);
       if (text) submitUser(text);
       else {
         setError("Couldn't catch that — try again or type.");
@@ -205,7 +185,7 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
       }
     };
     setError(null);
-    mr.start(2000); // emit a chunk every 2s -> drives the live transcript
+    mr.start();
     setPhase("recording");
   }
 
@@ -234,9 +214,6 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
       )}
       {lastCallout && phase !== "finished" && (
         <div className="callout fadein" key={lastCallout}>👀 {lastCallout}</div>
-      )}
-      {phase === "transcribing" && (
-        <div className="bubble listening">transcribing…</div>
       )}
       {(phase === "aiSpeaking" || phase === "sending") && (
         <div className="bubble ai thinking"><span>•</span><span>•</span><span>•</span></div>

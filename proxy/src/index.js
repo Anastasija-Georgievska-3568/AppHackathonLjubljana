@@ -184,6 +184,7 @@ async function handleSTT(request, env) {
   const form = new FormData();
   form.append("file", new Blob([buf], { type: contentType }), `audio.${ext}`);
   form.append("model", STT_MODEL);
+  form.append("language", "en"); // app is English-only; stops Whisper guessing other languages
   form.append("response_format", "json");
 
   const resp = await fetch(OPENAI_STT_URL, {
