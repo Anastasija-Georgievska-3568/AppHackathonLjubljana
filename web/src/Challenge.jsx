@@ -26,6 +26,7 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
   const streamRef = useRef(null);
   const transcriptEndRef = useRef(null);
   const startedRef = useRef(false);
+  const lastAttemptRef = useRef([]); // history of the last AI turn attempt, for retry
 
   const userTurnCount = turns.filter((t) => t.speaker === "user").length;
 
@@ -83,14 +84,15 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
   }
 
   async function runAITurn(history) {
+    lastAttemptRef.current = history; // remember for retry on failure
     setPhase("aiSpeaking"); // keeps the "…" indicator up while we prep the voice
     setError(null);
     const isFinalTurn = history.filter((t) => t.speaker === "user").length >= MAX_TURNS;
     let res;
     try {
       res = await nextTurn(scenario, history, isFinalTurn);
-    } catch (e) {
-      setError(e.message || "Something went wrong");
+    } catch {
+      setError("The other person went quiet — connection hiccup.");
       setPhase("awaiting");
       return;
     }
@@ -189,7 +191,9 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     setPhase("recording");
   }
 
-  const lastCallout = [...turns].reverse().find((t) => t.callout)?.callout;
+  // Only the newest AI turn's tip — so it refreshes each reply and never lingers stale.
+  const lastTurn = turns[turns.length - 1];
+  const lastCallout = lastTurn?.speaker === "ai" ? lastTurn.callout : null;
   const inputDisabled =
     phase === "sending" || phase === "aiSpeaking" || phase === "transcribing";
 
@@ -213,7 +217,7 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
         )
       )}
       {lastCallout && phase !== "finished" && (
-        <div className="callout fadein" key={lastCallout}>👀 {lastCallout}</div>
+        <div className="callout fadein" key={lastCallout}>→ {lastCallout}</div>
       )}
       {(phase === "aiSpeaking" || phase === "sending") && (
         <div className="bubble ai thinking"><span>•</span><span>•</span><span>•</span></div>
@@ -262,7 +266,16 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     );
 
   const errorEl = error && (
-    <div className="df-micro" style={{ color: "var(--warning)" }}>{error}</div>
+    <div className="row" style={{ justifyContent: "center", gap: 10 }}>
+      <span className="df-micro" style={{ color: "var(--warning)" }}>{error}</span>
+      <button
+        className="tag pink"
+        style={{ cursor: "pointer" }}
+        onClick={() => runAITurn(lastAttemptRef.current)}
+      >
+        ↻ retry
+      </button>
+    </div>
   );
 
   return (

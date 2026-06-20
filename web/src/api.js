@@ -17,6 +17,8 @@ const TURN_SCHEMA = {
   properties: {
     say: { type: "STRING" },
     confidenceDelta: { type: "INTEGER" },
+    register: { type: "STRING" },
+    cues: { type: "ARRAY", items: { type: "STRING" } },
     callout: { type: "STRING", nullable: true },
     shouldEnd: { type: "BOOLEAN" },
   },
@@ -83,6 +85,17 @@ Your behavior in role:
   • Never summarize what they said back to them ('I understand you want a raise —').
   • Don't start your line with 'I'. Lead with a reaction.
   • Banned openers: 'Certainly', 'Of course', 'Great', 'I see', 'That's fair'.
+- STAY HUMAN — DON'T LOOP (critical):
+  • NEVER repeat a point or sentence you've already made. Read your own previous lines in the
+    history; if you're about to say the same thing again, say something different instead.
+  • Every turn must ADD something new or shift your position — a new objection, a new question,
+    a concession, a change of mood.
+  • When the user pushes back on the same point 2+ times, react like a real person: give a
+    little ground, get flustered, change your angle, or back off. Do NOT restate your earlier
+    line in fresh words.
+  • By the third push on the same point your stance MUST visibly move — toward yes, toward a
+    compromise, or toward a clearly different objection. Real people don't hold an identical
+    position verbatim forever.
 
 TONE & CIVILITY (important):
 - This is a professional, real-world conversation. Stay polite and human even when you're resisting hard.
@@ -115,13 +128,21 @@ ${s.pressureCues.map((c) => `- ${c}`).join("\n")}
 Watch for and reward these confidence cues:
 ${s.confidenceCues.map((c) => `- ${c}`).join("\n")}
 
+PER-TURN SIGNALS (analyze the user's LAST message, return them — they keep your scoring honest):
+- register: one of "passive" | "assertive" | "aggressive". Assertive (clear + respectful) is the target; passive = folding/hedging; aggressive = hostile/rude.
+- cues: the tags that apply to what the user just said, from this fixed list ONLY:
+    positive: "named_number", "tied_to_impact", "held_position", "concise_and_clear"
+    negative: "hedged", "apologized", "lowered_ask", "vague", "rambled", "filled_silence"
+  Use [] when none clearly apply. Your confidenceDelta MUST be consistent with these (positive cues / assertive → positive; negative cues / passive or aggressive → negative).
+
 Scoring rules — return JSON:
 - say: your in-character spoken response, 1–2 sentences max
+- register + cues: as defined above
 - confidenceDelta: integer in [-20, +25]. Be generous when the user does something genuinely well — a strong, specific move earns +15 to +25. Reserve large negatives for clear hedging, apologizing, or folding.
-- callout: optional 1-line Gen-Z sass observation about what the user JUST did wrong — only when it's funny/true (e.g. "you apologized before explaining the issue"). Null if user did fine.
+- callout: ONE short, concrete coaching tip for the user's NEXT move, in plain spoken English like a friend whispering advice mid-conversation. Make it SPECIFIC to what they JUST said and to this scenario — quote or react to their actual words/number. Good examples: "say the exact number — '15% more', not 'a bit more'", "don't accept 'let me check' — ask when they'll decide by", "drop the 'sorry' and just state what you want", "give one concrete result you delivered". NEVER use app or coaching jargon — do NOT use the words: hedge, assertive, passive, aggressive, register, cue, anchor, filler. Those are internal only. NO roasting, NO praise-only lines, NO questions. Vary it every turn — never repeat advice you already gave. Null only when the user is genuinely doing well and there's nothing useful to add.
 - shouldEnd: true when the scene reaches a natural close OR after ~6-8 user turns.
 
-TONE for callouts: think Spotify Wrapped sass + Duolingo owl. Witty, knowing, NOT mean. NOT therapist-speak.
+TONE for callouts: a sharp communication coach. Concrete, direct, encouraging — never a roast, never therapist-speak.
 
 Return JSON only — the schema is enforced.`;
 }
@@ -186,9 +207,13 @@ JSON fields:
   Concrete and single-line. For folds, still surface at least 1 moment that worked.
 - improvementAreas: 1–3 specific things to do better next time, drawn from the transcript.
   Concrete and single-line. Direct, never mean.
-- stats: 3-4 short Spotify-Wrapped style chips with label + value. Examples:
-    {label: "FILLER WORDS", value: "2", detail: "controlled"}
-    {label: "FINAL VIBE", value: "Composed"}.
+- stats: 3-4 chips, each a REAL measurement counted from the transcript — never invented numbers.
+  Count the same signals used during the conversation. Examples (compute the actual values):
+    {label: "HEDGES", value: "3", detail: "just / maybe / I think"}   ← count hedging phrases the user actually used
+    {label: "HELD THE LINE", value: "4/5", detail: null}              ← user turns where they held vs folded
+    {label: "NUMBER NAMED", value: "Yes"} or {value: "No"}            ← did they ever state a concrete figure/ask
+    {label: "REGISTER", value: "Assertive"}                            ← overall: Passive / Assertive / Aggressive
+  Pick the 3-4 most telling for THIS run. Values must reflect what literally happened in the transcript.
 
 Return JSON only.`;
 }
@@ -221,28 +246,55 @@ function contentsFromHistory(history) {
   }));
 }
 
+// Retry rate-limits (429) and transient 5xx with exponential backoff before
+// giving up — mirrors the iOS GeminiService. On final failure we throw so the
+// UI can show an error + retry, instead of injecting fake canned lines.
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const MAX_RETRIES = 2; // up to 3 attempts total
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function backoffDelay(attempt, retryAfterHeader) {
+  const h = retryAfterHeader != null ? Number(retryAfterHeader) : NaN;
+  if (isFinite(h) && h > 0) return Math.min(h * 1000, 8000); // honor Retry-After
+  return 600 * Math.pow(2, attempt); // 600ms, 1200ms
+}
+
 async function callProxy(path, body) {
-  const resp = await fetch(`${PROXY_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-App-Token": APP_TOKEN,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    const err = new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
-    err.status = resp.status;
-    throw err;
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let resp;
+    try {
+      resp = await fetch(`${PROXY_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-App-Token": APP_TOKEN },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      lastErr = e; // network error — retry
+      if (attempt === MAX_RETRIES) throw e;
+      await sleep(backoffDelay(attempt));
+      continue;
+    }
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      const err = new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
+      err.status = resp.status;
+      if (RETRYABLE_STATUSES.has(resp.status) && attempt < MAX_RETRIES) {
+        lastErr = err;
+        await sleep(backoffDelay(attempt, resp.headers.get("Retry-After")));
+        continue;
+      }
+      throw err;
+    }
+    const data = await resp.json();
+    const out = (data.candidates?.[0]?.content?.parts || [])
+      .map((p) => p.text)
+      .filter(Boolean)
+      .join("");
+    if (!out) throw new Error("Empty response from model");
+    return out;
   }
-  const data = await resp.json();
-  const text = (data.candidates?.[0]?.content?.parts || [])
-    .map((p) => p.text)
-    .filter(Boolean)
-    .join("");
-  if (!text) throw new Error("Empty response from model");
-  return text;
+  throw lastErr;
 }
 
 // Pull a JSON object out of whatever the model returned (fences, prose,
@@ -316,19 +368,14 @@ export async function nextTurn(scenario, history, isFinalTurn = false) {
       responseSchema: TURN_SCHEMA,
     },
   };
-  try {
-    const raw = await callProxy("/turn", body);
-    const obj = JSON.parse(extractJSON(raw));
-    return {
-      say: obj.say || "",
-      confidenceDelta: toInt(obj.confidenceDelta, 0),
-      callout: obj.callout || null,
-      shouldEnd: !!obj.shouldEnd,
-    };
-  } catch (e) {
-    if (isRetryable(e)) return mockTurn(scenario, history);
-    throw e;
-  }
+  const raw = await callProxy("/turn", body);
+  const obj = JSON.parse(extractJSON(raw));
+  return {
+    say: obj.say || "",
+    confidenceDelta: toInt(obj.confidenceDelta, 0),
+    callout: obj.callout || null,
+    shouldEnd: !!obj.shouldEnd,
+  };
 }
 
 export async function finalVerdict(scenario, transcript, finalConfidence) {
@@ -435,50 +482,6 @@ function asStringArray(v) {
   if (typeof v === "string") return [v];
   return [];
 }
-function isRetryable(e) {
-  const s = e?.status;
-  return s === 429 || (s >= 500 && s <= 599);
-}
-
-function mockTurn(scenario, history) {
-  const userTurns = history.filter((t) => t.speaker === "user").length;
-  if (userTurns === 0)
-    return {
-      say: scenario.openingLine,
-      confidenceDelta: 0,
-      callout: null,
-      shouldEnd: false,
-    };
-  const lines = [
-    "Mm. Can you be more specific?",
-    "Okay — and what does that look like in practice?",
-    "Right. So what are you actually asking for?",
-    "Sure, sure. But — concretely?",
-  ];
-  const callouts = [
-    "you apologized before answering 🙃",
-    "filler word count just spiked",
-    "you softened the ask mid-sentence",
-    "the silence was working FOR you and you broke it",
-  ];
-  const lastUser =
-    [...history].reverse().find((t) => t.speaker === "user")?.text.toLowerCase() ||
-    "";
-  const folded =
-    lastUser.includes("sorry") ||
-    lastUser.includes("just") ||
-    lastUser.includes("kind of") ||
-    lastUser.includes("maybe");
-  return {
-    say: lines[Math.floor(Math.random() * lines.length)],
-    confidenceDelta: folded ? -10 : 6,
-    callout: folded
-      ? callouts[Math.floor(Math.random() * callouts.length)]
-      : null,
-    shouldEnd: userTurns >= 6,
-  };
-}
-
 function mockVerdict(transcript, finalConfidence) {
   const c = Math.round(finalConfidence * 100);
   const title =

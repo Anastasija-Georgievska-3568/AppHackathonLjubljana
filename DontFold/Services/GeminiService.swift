@@ -406,6 +406,8 @@ actor GeminiService {
         properties: [
             "say": .init(type: "STRING"),
             "confidenceDelta": .init(type: "INTEGER"),
+            "register": .init(type: "STRING"),
+            "cues": .init(type: "ARRAY", items: .init(type: "STRING")),
             "callout": .init(type: "STRING", nullable: true),
             "shouldEnd": .init(type: "BOOLEAN"),
         ],
@@ -550,6 +552,17 @@ private enum Prompts {
           • Never summarize what they said back to them ('I understand you want a raise —').
           • Don't start your line with 'I'. Lead with a reaction.
           • Banned openers: 'Certainly', 'Of course', 'Great', 'I see', 'That's fair'.
+        - STAY HUMAN — DON'T LOOP (critical):
+          • NEVER repeat a point or sentence you've already made. Read your own previous lines in the
+            history; if you're about to say the same thing again, say something different instead.
+          • Every turn must ADD something new or shift your position — a new objection, a new question,
+            a concession, a change of mood.
+          • When the user pushes back on the same point 2+ times, react like a real person: give a
+            little ground, get flustered, change your angle, or back off. Do NOT restate your earlier
+            line in fresh words.
+          • By the third push on the same point your stance MUST visibly move — toward yes, toward a
+            compromise, or toward a clearly different objection. Real people don't hold an identical
+            position verbatim forever.
 
         TONE & CIVILITY (important):
         - This is a professional, real-world conversation. Stay polite and human even when you're resisting hard.
@@ -582,13 +595,21 @@ private enum Prompts {
         Watch for and reward these confidence cues:
         \(scenario.confidenceCues.map { "- \($0)" }.joined(separator: "\n"))
 
+        PER-TURN SIGNALS (analyze the user's LAST message, return them — they keep your scoring honest):
+        - register: one of "passive" | "assertive" | "aggressive". Assertive (clear + respectful) is the target; passive = folding/hedging; aggressive = hostile/rude.
+        - cues: the tags that apply to what the user just said, from this fixed list ONLY:
+            positive: "named_number", "tied_to_impact", "held_position", "concise_and_clear"
+            negative: "hedged", "apologized", "lowered_ask", "vague", "rambled", "filled_silence"
+          Use [] when none clearly apply. Your confidenceDelta MUST be consistent with these (positive cues / assertive → positive; negative cues / passive or aggressive → negative).
+
         Scoring rules — return JSON:
         - say: your in-character spoken response, 1–2 sentences max
+        - register + cues: as defined above
         - confidenceDelta: integer in [-20, +25]. Be generous when the user does something genuinely well — a strong, specific move earns +15 to +25. Reserve large negatives for clear hedging, apologizing, or folding.
-        - callout: optional 1-line Gen-Z sass observation about what the user JUST did wrong — only when it's funny/true (e.g. "you apologized before explaining the issue"). Null if user did fine.
+        - callout: ONE short, concrete coaching tip for the user's NEXT move, in plain spoken English like a friend whispering advice mid-conversation. Make it SPECIFIC to what they JUST said and to this scenario — quote or react to their actual words/number. Good examples: "say the exact number — '15% more', not 'a bit more'", "don't accept 'let me check' — ask when they'll decide by", "drop the 'sorry' and just state what you want", "give one concrete result you delivered". NEVER use app or coaching jargon — do NOT use the words: hedge, assertive, passive, aggressive, register, cue, anchor, filler. Those are internal only. NO roasting, NO praise-only lines, NO questions. Vary it every turn — never repeat advice you already gave. Null only when the user is genuinely doing well and there's nothing useful to add.
         - shouldEnd: true when the scene reaches a natural close OR after ~6-8 user turns.
 
-        TONE for callouts: think Spotify Wrapped sass + Duolingo owl. Witty, knowing, NOT mean. NOT therapist-speak.
+        TONE for callouts: a sharp communication coach. Concrete, direct, encouraging — never a roast, never therapist-speak.
 
         Return JSON only — the schema is enforced.
         """
@@ -689,10 +710,13 @@ private enum Prompts {
           Concrete and single-line ("Stop apologizing before stating the ask", not "Be more
           confident"). For wins, still give 1 honest constructive note — they want to improve.
           Direct, never mean.
-        - stats: 3-4 short Spotify-Wrapped style chips with label + value. Examples:
-            {label: "FILLER WORDS", value: "2", detail: "controlled"}
-            {label: "TIME TO LAND", value: "0:42"}
-            {label: "FINAL VIBE", value: "Composed"}.
+        - stats: 3-4 chips, each a REAL measurement counted from the transcript — never invented numbers.
+          Count the same signals used during the conversation. Examples (compute the actual values):
+            {label: "HEDGES", value: "3", detail: "just / maybe / I think"}   ← count hedging phrases the user actually used
+            {label: "HELD THE LINE", value: "4/5", detail: null}              ← user turns where they held vs folded
+            {label: "NUMBER NAMED", value: "Yes"} or {value: "No"}            ← did they ever state a concrete figure/ask
+            {label: "REGISTER", value: "Assertive"}                            ← overall: Passive / Assertive / Aggressive
+          Pick the 3-4 most telling for THIS run. Values must reflect what literally happened in the transcript.
 
         Return JSON only.
         """
