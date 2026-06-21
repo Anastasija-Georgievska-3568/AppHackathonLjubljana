@@ -133,9 +133,14 @@ async function handleFeedback(request, env, ctx) {
   };
   const row = {
     ts: new Date().toISOString(),
-    relevance: clampRating(p.relevance),
-    coachUsefulness: clampRating(p.coachUsefulness),
+    seniority: String(p.seniority || "").slice(0, 12),
+    challenge: clampRating(p.challenge),
+    challengeMore: String(p.challengeMore || "").slice(0, 2000),
+    personasBelievable: clampRating(p.personasBelievable),
+    personasUseful: clampRating(p.personasUseful),
+    verdictAccuracy: clampRating(p.verdictAccuracy),
     repeatIntent: clampRating(p.repeatIntent),
+    nextScenario: String(p.nextScenario || "").slice(0, 500),
     nativePref: String(p.nativePref || "").slice(0, 8),
     nativeLanguage: String(p.nativeLanguage || "").slice(0, 40),
     text: String(p.text || "").slice(0, 2000),

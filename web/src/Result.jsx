@@ -10,10 +10,28 @@ export default function Result({ result, onReplay, onHome }) {
   const [showFeedback, setShowFeedback] = useState(false);
   useEffect(() => {
     const runs = markCompletedRun();
-    if (shouldAutoPrompt(runs)) {
+    if (!shouldAutoPrompt(runs)) return;
+    // Let the verdict breathe: open 5s after it shows, OR as soon as the user
+    // interacts with the card (clicks anything that isn't an action button).
+    let opened = false;
+    const open = () => {
+      if (opened) return;
+      opened = true;
       markPrompted();
       setShowFeedback(true);
+      cleanup();
+    };
+    const onClick = (e) => {
+      if (e.target.closest("button, a, input, textarea")) return;
+      open();
+    };
+    const timer = setTimeout(open, 5000);
+    document.addEventListener("click", onClick, true);
+    function cleanup() {
+      clearTimeout(timer);
+      document.removeEventListener("click", onClick, true);
     }
+    return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
