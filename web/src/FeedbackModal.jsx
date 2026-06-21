@@ -2,7 +2,13 @@ import { useState } from "react";
 import { submitFeedback, markDone } from "./feedback.js";
 
 // A short funnel: one card per step, progress bar so users see how long it is.
+// Step 0 is an intro that isn't counted in the progress.
 const STEPS = [
+  {
+    type: "intro",
+    q: "Would you like to share your feedback?",
+    sub: "It takes about 30 seconds and directly shapes what we build next.",
+  },
   {
     type: "select",
     key: "seniority",
@@ -63,7 +69,10 @@ export default function FeedbackModal({ context = {}, onClose }) {
       ? !!data[s.key]
       : s.type === "dual-rating"
       ? s.rows.every((r) => data[r.key])
-      : true; // wrap is optional
+      : true; // intro + wrap are optional
+
+  // Questions are steps 1..N; the intro (step 0) isn't part of the count.
+  const questionCount = STEPS.length - 1;
 
   async function finish() {
     setSending(true);
@@ -105,15 +114,23 @@ export default function FeedbackModal({ context = {}, onClose }) {
   return (
     <div className="modal-overlay" onClick={() => onClose(false)}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="funnel-progress">
-          <div
-            className="funnel-progress-fill"
-            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-          />
-        </div>
-        <div className="df-micro" style={{ marginTop: 8 }}>{step + 1} of {STEPS.length}</div>
+        {step > 0 && (
+          <>
+            <div className="funnel-progress">
+              <div
+                className="funnel-progress-fill"
+                style={{ width: `${(step / questionCount) * 100}%` }}
+              />
+            </div>
+            <div className="df-micro" style={{ marginTop: 8 }}>{step} of {questionCount}</div>
+          </>
+        )}
 
-        <h2 className="df-title" style={{ marginTop: 12, minHeight: 52 }}>{s.q}</h2>
+        <h2 className="df-title" style={{ marginTop: 12, minHeight: step === 0 ? 0 : 52 }}>{s.q}</h2>
+
+        {s.type === "intro" && (
+          <p className="df-body" style={{ marginTop: 10 }}>{s.sub}</p>
+        )}
 
         {s.type === "select" && (
           <div className="rating-row" style={{ marginTop: 8 }}>
@@ -212,7 +229,7 @@ export default function FeedbackModal({ context = {}, onClose }) {
             <button className="btn ghost" onClick={() => setStep((i) => i - 1)}>Back</button>
           )}
           <button className="btn primary block" disabled={!canAdvance || sending} onClick={next}>
-            {isLast ? (sending ? "Sending…" : "Send feedback") : "Next"}
+            {s.type === "intro" ? "Sure, let's go" : isLast ? (sending ? "Sending…" : "Send feedback") : "Next"}
           </button>
         </div>
 

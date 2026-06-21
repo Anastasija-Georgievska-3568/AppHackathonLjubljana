@@ -101,6 +101,7 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     }
     const aiTurn = { speaker: "ai", text: res.say };
     const newTurns = [...history, aiTurn];
+    const isEnd = res.shouldEnd || isFinalTurn;
 
     // Reveal the text + advance the phase. Pace the type-on to the clip length
     // (when known) so the words finish about when the voice does.
@@ -111,8 +112,27 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
           : 40;
       setRevealSpeed(perChar);
       setTurns(newTurns);
-      if (res.shouldEnd || isFinalTurn) finishSession(newTurns);
-      else setPhase("awaiting");
+      if (!isEnd) setPhase("awaiting");
+    };
+
+    // On the final turn, don't jump to the verdict until the manager has
+    // actually FINISHED speaking. Gate on the audio's real 'ended' event, with a
+    // duration-based fallback so a missing event / failed TTS can't strand us.
+    const scheduleFinish = (durationMs) => {
+      const perChar =
+        durationMs && res.say.length
+          ? Math.min(80, Math.max(26, durationMs / res.say.length))
+          : 40;
+      const typingMs = perChar * res.say.length;
+      const fallbackMs = Math.max(typingMs, durationMs || 0) + 2500;
+      let done = false;
+      const go = () => {
+        if (done) return;
+        done = true;
+        finishSession(newTurns);
+      };
+      if (audioRef.current) audioRef.current.addEventListener("ended", go, { once: true });
+      setTimeout(go, fallbackMs);
     };
 
     // Wait for the voice to be ready before showing text — but cap the wait so
@@ -125,10 +145,14 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
 
     if (prepared === "TIMEOUT") {
       reveal(null); // show text now; play the voice whenever it lands
-      prepPromise.then((p) => playPrepared(p, res.say));
+      prepPromise.then((p) => {
+        playPrepared(p, res.say);
+        if (isEnd) scheduleFinish(p && p.durationMs);
+      });
     } else {
       reveal(prepared.durationMs);
       playPrepared(prepared, res.say);
+      if (isEnd) scheduleFinish(prepared.durationMs);
     }
   }
 
@@ -291,10 +315,6 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
       <div className="screen" style={{ position: "relative" }}>
         <div className="topbar">
           <button className="icon-btn" onClick={onExit}>←</button>
-          <div>
-            <div className="df-micro">{scenario.personaLabel || scenario.personaTypeLabel}</div>
-            <div style={{ fontWeight: 800 }}>{scenario.title}</div>
-          </div>
           <div className="spacer" />
           {turnsBadge}
         </div>

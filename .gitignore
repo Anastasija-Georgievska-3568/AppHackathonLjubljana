@@ -32,3 +32,6 @@ secrets.plist
 .idea/
 .vscode/
 *.swp
+
+# Wrangler local cache
+.wrangler/

@@ -148,17 +148,18 @@ body {
 
 .icon-btn {
   appearance: none;
-  background: var(--bg);
-  border: 1.5px solid var(--ink);
-  border-radius: 999px;
+  background: none;
+  border: none;
   width: 40px;
   height: 40px;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 800;
   cursor: pointer;
   display: grid;
   place-items: center;
   color: var(--ink);
+  padding: 0;
+  margin-left: -8px;
 }
 
 /* ---- layout helpers ---- */
@@ -575,6 +576,54 @@ body {
   background: var(--accent3);
   border-bottom: 2px solid var(--ink);
   color: var(--text-secondary);
+}
+
+/* ---- landing page ---- */
+.landing-shell {
+  width: 100%;
+  min-height: 100dvh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.landing-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 32px 32px;
+}
+.landing-wordmark {
+  font-family: var(--font-display);
+  font-size: clamp(68px, 18vw, 116px);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  -webkit-text-stroke: 1.5px var(--ink);
+  margin: 0 0 28px;
+}
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 0 32px 48px;
+}
+.feature-card {
+  border: 1.5px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.landing-footer {
+  padding: 16px 32px;
+  border-top: 1px solid rgba(13, 13, 13, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
 }
 
 /* ===========================================================================

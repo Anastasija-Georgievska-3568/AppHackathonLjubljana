@@ -25,7 +25,7 @@ export default function Result({ result, onReplay, onHome }) {
       if (e.target.closest("button, a, input, textarea")) return;
       open();
     };
-    const timer = setTimeout(open, 5000);
+    const timer = setTimeout(open, 10000);
     document.addEventListener("click", onClick, true);
     function cleanup() {
       clearTimeout(timer);
@@ -111,7 +111,14 @@ export default function Result({ result, onReplay, onHome }) {
       </div>
       <button
         className="df-micro"
-        style={{ background: "none", border: "none", cursor: "pointer", marginTop: 4 }}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          marginTop: 4,
+          color: "var(--accent)",
+          fontWeight: 800,
+        }}
         onClick={() => setShowFeedback(true)}
       >
         💬 give beta feedback

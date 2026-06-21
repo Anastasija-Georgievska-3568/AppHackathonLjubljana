@@ -1,5 +1,4 @@
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODEL = "gemini-2.5-flash";
+const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 const TTS_MODEL = "tts-1-hd";
 const OPENAI_STT_URL = "https://api.openai.com/v1/audio/transcriptions";
@@ -103,14 +102,14 @@ export default {
       return withCors(await handleFeedback(request, env, ctx), request, env);
     }
 
-    // Forward the body the app built straight to Gemini.
+    // Forward the body the app built straight to OpenAI chat completions.
     const body = await request.text();
-    const geminiURL =
-      `${GEMINI_BASE}/${MODEL}:generateContent?key=${env.GEMINI_API_KEY}`;
-
-    const resp = await fetch(geminiURL, {
+    const resp = await fetch(OPENAI_CHAT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+      },
       body,
     });
 

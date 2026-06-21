@@ -12,47 +12,7 @@ const APP_TOKEN =
   import.meta.env.VITE_APP_TOKEN ||
   "1e5ba1cb1fea44ab80d52b05984206fd8d8d86db42ea24b0208415b6732337df";
 
-// ---- Schemas (Gemini structured output) -----------------------------------
-
-const CHARACTER_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    say: { type: "STRING" },
-    shouldEnd: { type: "BOOLEAN" },
-  },
-  required: ["say", "shouldEnd"],
-};
-
-const COACH_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    note: { type: "STRING" },
-    score: { type: "INTEGER" },
-  },
-  required: ["note", "score"],
-};
-
-const DEBRIEF_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    finalScore: { type: "INTEGER" },
-    band: { type: "STRING" },
-    verdictTitle: { type: "STRING" },
-    oneLinerToShare: { type: "STRING" },
-    heldBest: { type: "STRING" },
-    biggestLeakQuote: { type: "STRING" },
-    biggestLeakBetter: { type: "STRING" },
-    practice: { type: "STRING" },
-  },
-  required: [
-    "finalScore",
-    "band",
-    "verdictTitle",
-    "heldBest",
-    "biggestLeakBetter",
-    "practice",
-  ],
-};
+const GPT_MODEL = "gpt-4o";
 
 // ---- CHARACTER (the manager) ----------------------------------------------
 
@@ -67,6 +27,8 @@ The user (your report) has booked this meeting. Their goal: ${s.userGoal}
 
 HOW THE APP WORKS — READ CAREFULLY:
 - It's turn-based. You only speak after the user finishes. You are NOT under time pressure and the user is NOT leaving you in silence — so NEVER use, mention, or react to "silence", "pauses", or "letting it sit". That tactic does not exist here. Difficulty comes from your words and your standards, not from waiting.
+
+IF ASKED FOR A NUMBER: If the user asks what you have in mind, what the budget is, or what the range looks like — give a real answer in character (conservative, lower than fair market). Don't dodge it indefinitely; a manager who never names a number isn't believable. That low opening is what they have to counter.
 
 HOW YOU BEHAVE:
 - Always push back at least once with a real, in-character objection before conceding anything — even a strong, well-framed ask earns pushback first.
@@ -96,7 +58,7 @@ WHAT GREAT LOOKS LIKE (the skills you score):
 - Evidence over emotion: grounds the ask in contribution/impact, said calmly — NOT feelings, need ("rent", "cost of living"), unfairness, or tenure alone.
 - Clear, confident words: plain, direct sentences; free of weak words (just, only, maybe, I think, I feel, sort of, hopefully) and of asking permission to even bring it up.
 - Assertive tone: firm AND warm. Owns the request as reasonable. Not pleading, not aggressive.
-- Order of the ask: frames value BEFORE any number; never leads with the figure; if a number comes, starts high.
+- Order of the ask: ideally draws out the manager's number first before naming their own ("what did you have in mind?" / "what's the range you're working with?" / "where are you on this?"). If they name first, they counter higher with a framed reason. Naming your own number first without hearing theirs is a missed opportunity — penalize it.
 - Productive close: ends with a concrete next step — a number, a date, an owner.
 
 SCORE (0–100, the WHOLE conversation so far, not just this line). Weighting: Composure 20, Reading & connecting 20, Evidence 15, Clear words 15, Assertive tone 15, Order of ask 10, Close 5. Bands: 0–39 Folded, 40–59 Shaky, 60–79 Steady, 80–100 Strong.
@@ -108,9 +70,9 @@ SCORE (0–100, the WHOLE conversation so far, not just this line). Weighting: C
 THE NOTE (one short coaching line, 1–2 sentences, shown on screen next to the manager's reply):
 - ONE point only. Praise one specific thing they did, OR give one better move, OR a quick mix of one praise + one tweak. NEVER stack two criticisms.
 - Plain spoken English, like a friend coaching mid-conversation. NEVER use jargon (composure, assertive, register, cue, hedge, filler, etc.).
-- If they slipped, name it gently and hand them the fix WITH a short sample line that works against THIS manager.
+- If they slipped (score below 65, or a clear mistake): name the slip in one clause, then give them the EXACT LINE to say next turn — something they can almost copy-paste. Make it specific to this manager and this moment. E.g. "You named your number before hearing theirs — next turn try: 'before I get into numbers, what did you have in mind?'"
 - If they did well, praise the specific move so they repeat it. If they fixed an earlier miss, call out the progress.
-- Match their state: if they sound nervous, encourage and keep the fix small; if they're strong, push harder.
+- Match their state: if they sound nervous, keep the fix small and the sample line short; if they're strong, push them to the next level.
 - Point forward (what to try next turn). Never repeat the previous note — change the angle if they keep missing the same thing.
 
 Return JSON only: { note, score }.`;
@@ -162,13 +124,12 @@ ${convo}`;
 
 // ---- HTTP plumbing ---------------------------------------------------------
 
-function contentsFromHistory(history) {
-  // Gemini wants the trimmed sequence to start with a user message.
+function messagesFromHistory(history) {
   let trimmed = history.slice(-16);
   while (trimmed.length > 1 && trimmed[0].speaker === "ai") trimmed.shift();
   return trimmed.map((t) => ({
-    role: t.speaker === "ai" ? "model" : "user",
-    parts: [{ text: t.text }],
+    role: t.speaker === "ai" ? "assistant" : "user",
+    content: t.text,
   }));
 }
 
@@ -213,10 +174,7 @@ async function callProxy(path, body) {
       throw err;
     }
     const data = await resp.json();
-    const out = (data.candidates?.[0]?.content?.parts || [])
-      .map((p) => p.text)
-      .filter(Boolean)
-      .join("");
+    const out = data.choices?.[0]?.message?.content || "";
     if (!out) throw new Error("Empty response from model");
     return out;
   }
@@ -279,15 +237,15 @@ export async function nextTurn(scenario, history, isFinalTurn = false) {
     ? `${characterSystemPrompt(scenario)}\n\nFINAL TURN — deliver a definitive in-character outcome (a decision, a concrete partial, or a clear dead end). 1–2 sentences. No questions. shouldEnd MUST be true.`
     : characterSystemPrompt(scenario);
   const body = {
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: contentsFromHistory(history),
-    generationConfig: {
-      temperature: 0.92,
-      topP: 0.9,
-      maxOutputTokens: 400,
-      responseMimeType: "application/json",
-      responseSchema: CHARACTER_SCHEMA,
-    },
+    model: GPT_MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messagesFromHistory(history),
+    ],
+    temperature: 0.92,
+    top_p: 0.9,
+    max_tokens: 400,
+    response_format: { type: "json_object" },
   };
   const raw = await callProxy("/turn", body);
   const obj = JSON.parse(extractJSON(raw));
@@ -298,15 +256,15 @@ export async function nextTurn(scenario, history, isFinalTurn = false) {
 // failure so a coaching hiccup never blocks the manager's reply.
 export async function coachTurn(scenario, history, lastNote = "") {
   const body = {
-    systemInstruction: { parts: [{ text: coachSystemPrompt(scenario) }] },
-    contents: [{ role: "user", parts: [{ text: coachUserPrompt(history, lastNote) }] }],
-    generationConfig: {
-      temperature: 0.4,
-      topP: 0.9,
-      maxOutputTokens: 400,
-      responseMimeType: "application/json",
-      responseSchema: COACH_SCHEMA,
-    },
+    model: GPT_MODEL,
+    messages: [
+      { role: "system", content: coachSystemPrompt(scenario) },
+      { role: "user", content: coachUserPrompt(history, lastNote) },
+    ],
+    temperature: 0.4,
+    top_p: 0.9,
+    max_tokens: 400,
+    response_format: { type: "json_object" },
   };
   try {
     const raw = await callProxy("/turn", body);
@@ -322,17 +280,15 @@ export async function coachTurn(scenario, history, lastNote = "") {
 // COACH debrief at the end of the run.
 export async function finalVerdict(scenario, transcript, finalScore) {
   const body = {
-    systemInstruction: { parts: [{ text: debriefSystemPrompt() }] },
-    contents: [
-      { role: "user", parts: [{ text: debriefUserPrompt(transcript, finalScore) }] },
+    model: GPT_MODEL,
+    messages: [
+      { role: "system", content: debriefSystemPrompt() },
+      { role: "user", content: debriefUserPrompt(transcript, finalScore) },
     ],
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      maxOutputTokens: 1200,
-      responseMimeType: "application/json",
-      responseSchema: DEBRIEF_SCHEMA,
-    },
+    temperature: 0.7,
+    top_p: 0.9,
+    max_tokens: 1200,
+    response_format: { type: "json_object" },
   };
   try {
     const raw = await callProxy("/verdict", body);

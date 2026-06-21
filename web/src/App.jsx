@@ -101,7 +101,7 @@ function HeroIntro() {
     <>
       <h1 className="df-display wordmark" style={{ marginBottom: 8 }}>
         DON'T<br />
-        <span style={{ color: "var(--accent)" }}>FOLD.</span>
+        <span style={{ color: "var(--accent)" }}>FOLD</span>.
       </h1>
       <div className="df-kicker" style={{ color: "var(--ink)" }}>CHOOSE YOUR HARD CONVO →</div>
     </>
@@ -160,7 +160,6 @@ function PersonaPicker({ isDesktop, scenario, onBack, onPick }) {
       <div className="screen">
         <div className="topbar">
           <button className="icon-btn" onClick={onBack}>←</button>
-          <div className="df-micro">{scenario.title}</div>
         </div>
         <h1 className="df-display">Pick your<br />opponent.</h1>
         {grid}
@@ -214,7 +213,6 @@ function Brief({ isDesktop, scenario, onBack, onStart }) {
       <div className="screen">
         <div className="topbar">
           <button className="icon-btn" onClick={onBack}>←</button>
-          <div className="df-micro">THE BRIEF</div>
         </div>
         <h1 className="df-display">{scenario.title}</h1>
         {sceneCard}

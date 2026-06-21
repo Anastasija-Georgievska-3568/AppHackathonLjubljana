@@ -7,20 +7,21 @@ export const SCENARIOS = [
     title: "Asking For A Raise",
     blurb: "Boss said 'so… what did you want to talk about?'",
     setup:
-      "You booked a 1:1 last week. You've been performing well for the past 14 months and have received no monetary compensation. You walk in with the manager. The door of the meeting room closes. The conversation begins.",
+      "You booked a one-on-one. You walked in. The door closes. The conversation begins.",
     personaTypeLabel: "manager",
     userGoal:
-      "Name a number and hold your ground firmly, with sensible arguments.",
+      "Get them to name a number first. Then counter with yours and lock in a concrete follow-up date.",
     pressureCues: [
-      "hedging on the number",
+      "naming your number before hearing theirs",
       "apologising for asking",
-      "lowering your ask",
-      "saying 'whenever it's good for you'",
+      "accepting vague promises without a date",
+      "lowering your counter before they push back",
     ],
     confidenceCues: [
-      "named a concrete figure",
-      "tied it to impact you delivered",
-      "asked for a follow-up date",
+      "got them to name a number or range first",
+      "countered with a higher specific number",
+      "tied your counter to impact you delivered",
+      "locked in a concrete follow-up date",
     ],
     comingSoon: false,
     personas: [
