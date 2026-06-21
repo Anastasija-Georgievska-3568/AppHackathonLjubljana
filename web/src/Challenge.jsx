@@ -10,7 +10,7 @@ const supportsVoice =
   typeof window !== "undefined" &&
   typeof window.MediaRecorder !== "undefined";
 
-const MAX_TURNS = 6;
+const MAX_TURNS = 5;
 
 export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
   const [turns, setTurns] = useState([]); // {speaker, text}

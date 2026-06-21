@@ -63,7 +63,7 @@ export const SCENARIOS = [
         aiVoiceHint: "alloy",
         keySkills: "Productive close, and Reading & connecting (open questions to extract specifics)",
         openingLine:
-          "Great to connect on this! I've been thinking a lot about your trajectory.",
+          "Hey, great to grab some time! Come on in — so, what's on your mind?",
       },
       {
         id: "raise-gaslighter",
@@ -84,7 +84,7 @@ export const SCENARIOS = [
         aiVoiceHint: "echo",
         keySkills: "Composure, and Evidence over emotion (facts, not feelings)",
         openingLine:
-          "Glad you came to me. Refresh me — what is it you wanted to revisit?",
+          "Good to see you, come on in. So — what did you want to talk about?",
       },
       {
         id: "raise-pleaser",
@@ -104,7 +104,7 @@ export const SCENARIOS = [
         aiVoiceHint: "alloy",
         keySkills: "Productive close, and Reading & connecting (match the warmth, then pin it)",
         openingLine:
-          "Hey! Yes of course, come in — I've been meaning to check in with you anyway.",
+          "Hey, come in, come in! So good to see you — what's on your mind?",
       },
       {
         id: "raise-numbers",
@@ -123,7 +123,7 @@ export const SCENARIOS = [
           "Cold and transactional. Demands hard numbers and a business case. 'What's the ROI?' 'That's qualitative — give me a figure.' Impatient with anything soft. Not unkind, he genuinely believes this is how decisions get made — but he will actually END the conversation if the user can't justify with impact. The way through is to lead with the strongest concrete result framed as a business return, calmly, in his register, then hand him a 'how/what' question to engage him in making the case upward. Emotion or personal need is an instant loss with him; so is rambling or apologizing. Reward real numbers ('I shipped X which saved Y') with 'okay, let's talk'. FAIL STATE: if the user gives two turns with no concrete value, set shouldEnd true and close it out — the coach will debrief the early end.",
         aiVoiceHint: "onyx",
         keySkills: "Evidence over emotion, and Composure",
-        openingLine: "Sure. Walk me through it.",
+        openingLine: "Take a seat. So — what did you want to discuss?",
       },
     ],
   },
