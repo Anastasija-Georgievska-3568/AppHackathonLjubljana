@@ -11,7 +11,7 @@ export default function Result({ result, onReplay, onHome }) {
   useEffect(() => {
     const runs = markCompletedRun();
     if (!shouldAutoPrompt(runs)) return;
-    // Let the verdict breathe: open 5s after it shows, OR as soon as the user
+    // Let the verdict breathe: open ~10s after it shows, OR as soon as the user
     // interacts with the card (clicks anything that isn't an action button).
     let opened = false;
     const open = () => {
@@ -110,15 +110,7 @@ export default function Result({ result, onReplay, onHome }) {
         <button className="btn ghost block" onClick={onHome}>Home</button>
       </div>
       <button
-        className="df-micro"
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          marginTop: 4,
-          color: "var(--accent)",
-          fontWeight: 800,
-        }}
+        className="feedback-cta"
         onClick={() => setShowFeedback(true)}
       >
         💬 give beta feedback

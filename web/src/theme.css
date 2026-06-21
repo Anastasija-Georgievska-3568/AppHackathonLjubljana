@@ -350,6 +350,15 @@ body {
   padding: 20px;
   z-index: 50;
   overflow-y: auto;
+  animation: overlay-in 0.25s ease both;
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .modal-card {
   background: var(--bg);
@@ -359,6 +368,17 @@ body {
   width: 100%;
   max-width: 440px;
   margin: auto;
+  animation: modal-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .funnel-progress {
   height: 8px;
@@ -559,6 +579,40 @@ body {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Beta feedback CTA — gently floats up and down to catch the eye. */
+.feedback-cta {
+  display: inline-block;
+  margin: 4px auto 0;
+  padding: 8px 16px;
+  background: var(--accent3);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  animation: cta-float 3s ease-in-out infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.feedback-cta:hover {
+  animation-play-state: paused;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 0 var(--ink);
+}
+@keyframes cta-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feedback-cta {
+    animation: none;
   }
 }
 
