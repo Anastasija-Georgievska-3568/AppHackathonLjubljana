@@ -234,29 +234,20 @@ nav {
 .demo-sub-link:hover { color: var(--accent); }
 
 .demo-video {
-  position: relative;
-  aspect-ratio: 16 / 9;
+  display: block;
+  width: 100%;
+  height: auto;
   border: 1.5px solid var(--ink);
   border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.demo-play {
-  font-size: 34px;
-  color: var(--accent);
-  line-height: 1;
+  background: #000;
 }
 
 .demo-caption {
+  margin-top: 12px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--muted);
 }
 
