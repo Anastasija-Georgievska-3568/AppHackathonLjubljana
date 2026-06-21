@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { nextTurn, finalVerdict, fetchTTS, transcribe, track } from "./api.js";
+import { nextTurn, coachTurn, finalVerdict, fetchTTS, transcribe, track } from "./api.js";
 import { ConfidenceMeter, TypeOnText, MicButton } from "./components.jsx";
 
 // Voice works in every browser that can record audio (we transcribe server-side
@@ -13,8 +13,9 @@ const supportsVoice =
 const MAX_TURNS = 6;
 
 export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
-  const [turns, setTurns] = useState([]); // {speaker, text, callout}
-  const [confidence, setConfidence] = useState(0.55);
+  const [turns, setTurns] = useState([]); // {speaker, text}
+  const [score, setScore] = useState(50); // running confidence score 0–100 (from COACH)
+  const [coachNote, setCoachNote] = useState(null); // latest coach tip
   const [phase, setPhase] = useState("intro"); // intro | aiSpeaking | awaiting | recording | transcribing | sending | finished
   const [draft, setDraft] = useState("");
   const [error, setError] = useState(null);
@@ -26,7 +27,9 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
   const streamRef = useRef(null);
   const transcriptEndRef = useRef(null);
   const startedRef = useRef(false);
-  const lastAttemptRef = useRef([]); // history of the last AI turn attempt, for retry
+  const lastAttemptRef = useRef([]); // history of the last manager-reply attempt, for retry
+  const scoreRef = useRef(50); // latest score for the async debrief
+  const lastNoteRef = useRef(""); // previous coach note, so the next one doesn't repeat it
 
   const userTurnCount = turns.filter((t) => t.speaker === "user").length;
 
@@ -96,11 +99,7 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
       setPhase("awaiting");
       return;
     }
-    const newConf = clamp(confidenceRef.current + res.confidenceDelta / 100);
-    confidenceRef.current = newConf;
-    setConfidence(newConf);
-
-    const aiTurn = { speaker: "ai", text: res.say, callout: res.callout };
+    const aiTurn = { speaker: "ai", text: res.say };
     const newTurns = [...history, aiTurn];
 
     // Reveal the text + advance the phase. Pace the type-on to the clip length
@@ -112,7 +111,7 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
           : 40;
       setRevealSpeed(perChar);
       setTurns(newTurns);
-      if (res.shouldEnd || isFinalTurn) finishSession(newTurns, newConf);
+      if (res.shouldEnd || isFinalTurn) finishSession(newTurns);
       else setPhase("awaiting");
     };
 
@@ -133,15 +132,25 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     }
   }
 
-  async function finishSession(finalTurns, conf) {
+  async function finishSession(finalTurns) {
     setPhase("finished");
     track("complete", scenario.id);
-    const verdict = await finalVerdict(scenario, finalTurns, conf);
-    onFinish({ verdict, scenario, finalConfidence: conf });
+    const verdict = await finalVerdict(scenario, finalTurns, scoreRef.current);
+    onFinish({ verdict, scenario, finalScore: verdict.finalScore });
   }
 
-  // keep a ref of latest confidence for the async verdict call
-  const confidenceRef = useRef(confidence);
+  // COACH: evaluate the user's latest message in parallel with the manager reply.
+  // Best-effort — a coaching hiccup never blocks the conversation.
+  async function runCoach(history) {
+    const res = await coachTurn(scenario, history, lastNoteRef.current);
+    if (!res) return;
+    scoreRef.current = res.score;
+    setScore(res.score);
+    if (res.note) {
+      lastNoteRef.current = res.note;
+      setCoachNote(res.note);
+    }
+  }
 
   function submitUser(text) {
     const trimmed = text.trim();
@@ -149,11 +158,13 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     // Cut off any AI voice still playing so it doesn't talk over the user.
     if (audioRef.current) { try { audioRef.current.pause(); } catch { /* ignore */ } }
     setDraft("");
-    const userTurn = { speaker: "user", text: trimmed, callout: null };
+    setCoachNote(null); // clear the old tip while this turn is evaluated
+    const userTurn = { speaker: "user", text: trimmed };
     const history = [...turns, userTurn];
     setTurns(history);
     setPhase("sending");
-    runAITurn(history);
+    runCoach(history); // COACH (parallel, best-effort)
+    runAITurn(history); // CHARACTER (manager reply)
   }
 
   // Record mic audio, then transcribe it server-side (Whisper) on stop.
@@ -191,9 +202,6 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
     setPhase("recording");
   }
 
-  // Only the newest AI turn's tip — so it refreshes each reply and never lingers stale.
-  const lastTurn = turns[turns.length - 1];
-  const lastCallout = lastTurn?.speaker === "ai" ? lastTurn.callout : null;
   const inputDisabled =
     phase === "sending" || phase === "aiSpeaking" || phase === "transcribing";
 
@@ -216,8 +224,8 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
           <div className="bubble user" key={i}>{t.text}</div>
         )
       )}
-      {lastCallout && phase !== "finished" && (
-        <div className="callout fadein" key={lastCallout}>→ {lastCallout}</div>
+      {coachNote && phase !== "finished" && (
+        <div className="callout fadein" key={coachNote}>→ {coachNote}</div>
       )}
       {(phase === "aiSpeaking" || phase === "sending") && (
         <div className="bubble ai thinking"><span>•</span><span>•</span><span>•</span></div>
@@ -291,15 +299,11 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
           {turnsBadge}
         </div>
 
-        <ConfidenceMeter value={confidence} />
+        <ConfidenceMeter value={score / 100} />
         {transcriptEl}
         {errorEl}
         {inputEl}
       </div>
     </div>
   );
-}
-
-function clamp(v) {
-  return Math.max(0, Math.min(1, v));
 }

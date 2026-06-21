@@ -1,8 +1,15 @@
 export default function Result({ result, onReplay, onHome }) {
-  const { verdict, finalConfidence } = result;
-  const score = verdict.finalConfidenceScore ?? Math.round(finalConfidence * 100);
+  const { verdict } = result;
+  const score = verdict.finalScore ?? 0;
+  const band = verdict.band || "";
   const tierColor =
-    score >= 70 ? "var(--accent)" : score >= 40 ? "var(--accent2)" : "var(--warning)";
+    score >= 80
+      ? "var(--accent)"
+      : score >= 60
+      ? "var(--accent)"
+      : score >= 40
+      ? "var(--accent2)"
+      : "var(--warning)";
 
   async function share() {
     const text = verdict.oneLinerToShare
@@ -21,52 +28,38 @@ export default function Result({ result, onReplay, onHome }) {
 
   const hero = (
     <div className="card pink verdict-hero fadein">
-      <div className="df-kicker">YOUR VERDICT</div>
+      <div className="df-kicker">{band ? band.toUpperCase() : "YOUR VERDICT"}</div>
       <h1 className="df-display" style={{ margin: "8px 0" }}>{verdict.verdictTitle}</h1>
       <div className="score-ring" style={{ color: tierColor }}>{score}</div>
       <div className="df-micro" style={{ marginTop: 4 }}>CONFIDENCE / 100</div>
-      {verdict.verdictVibe && (
-        <p className="df-body" style={{ marginTop: 14 }}>{verdict.verdictVibe}</p>
-      )}
     </div>
   );
 
-  const shareCard = verdict.oneLinerToShare && (
+  const heldBest = verdict.heldBest && (
     <div className="card" style={{ padding: 16 }}>
-      <div className="df-kicker">SHAREABLE</div>
-      <p className="df-title" style={{ marginTop: 6, fontSize: 18 }}>
-        “{verdict.oneLinerToShare}”
+      <div className="df-kicker">WHAT HELD</div>
+      <p className="df-body" style={{ marginTop: 6 }}>{verdict.heldBest}</p>
+    </div>
+  );
+
+  const leak = verdict.biggestLeakBetter && (
+    <div className="card" style={{ padding: 16 }}>
+      <div className="df-kicker" style={{ color: "var(--warning)" }}>BIGGEST LEAK</div>
+      {verdict.biggestLeakQuote && (
+        <p className="df-body" style={{ marginTop: 6, fontStyle: "italic" }}>
+          “{verdict.biggestLeakQuote}”
+        </p>
+      )}
+      <p className="df-body" style={{ marginTop: 6 }}>
+        <strong>Try:</strong> {verdict.biggestLeakBetter}
       </p>
     </div>
   );
 
-  const stats = verdict.stats?.length > 0 && (
-    <div className="chip-grid">
-      {verdict.stats.map((s, i) => (
-        <div className="chip fadein" key={i}>
-          <div className="df-micro">{s.label}</div>
-          <div className="v">{s.value}</div>
-          {s.detail && <div className="df-micro" style={{ marginTop: 2 }}>{s.detail}</div>}
-        </div>
-      ))}
-    </div>
-  );
-
-  const good = verdict.goodMoments?.length > 0 && (
+  const practice = verdict.practice && (
     <div className="card" style={{ padding: 16 }}>
-      <div className="df-kicker">WHAT LANDED</div>
-      {verdict.goodMoments.map((m, i) => (
-        <div className="list-item" key={i}><span className="dot">✓</span><span>{m}</span></div>
-      ))}
-    </div>
-  );
-
-  const improve = verdict.improvementAreas?.length > 0 && (
-    <div className="card" style={{ padding: 16 }}>
-      <div className="df-kicker">NEXT TIME</div>
-      {verdict.improvementAreas.map((m, i) => (
-        <div className="list-item" key={i}><span className="dot">→</span><span>{m}</span></div>
-      ))}
+      <div className="df-kicker">PRACTICE THIS</div>
+      <p className="df-body" style={{ marginTop: 6 }}>{verdict.practice}</p>
     </div>
   );
 
@@ -84,10 +77,9 @@ export default function Result({ result, onReplay, onHome }) {
     <div className="app-shell">
       <div className="screen">
         {hero}
-        {shareCard}
-        {stats}
-        {good}
-        {improve}
+        {heldBest}
+        {leak}
+        {practice}
         <div className="spacer" />
         {actions}
       </div>
