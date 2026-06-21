@@ -201,6 +201,9 @@ export default function FeedbackModal({ context = {}, onClose }) {
               onChange={(e) => set("email", e.target.value)}
               placeholder="email (optional — if you're up for a follow-up)"
             />
+            <div className="df-micro" style={{ marginTop: 10, opacity: 0.8 }}>
+              Your answers (and email, if given) are stored to improve the app. See "privacy" on the home screen.
+            </div>
           </div>
         )}
 

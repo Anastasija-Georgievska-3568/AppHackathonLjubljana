@@ -7,6 +7,7 @@ const PROXY_BASE = import.meta.env.DEV
   : "https://dontfold-proxy.dontfold.workers.dev";
 
 const APP_TOKEN =
+  import.meta.env.VITE_APP_TOKEN ||
   "1e5ba1cb1fea44ab80d52b05984206fd8d8d86db42ea24b0208415b6732337df";
 
 const K_DEVICE = "df_device_id";

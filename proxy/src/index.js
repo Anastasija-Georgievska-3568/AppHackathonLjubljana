@@ -5,29 +5,62 @@ const TTS_MODEL = "tts-1-hd";
 const OPENAI_STT_URL = "https://api.openai.com/v1/audio/transcriptions";
 const STT_MODEL = "whisper-1";
 
-// CORS so the web client (different origin) can call the proxy from a browser.
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
+// CORS. Origin is locked to env.ALLOWED_ORIGINS (comma-separated) when set;
+// before that's configured it stays permissive so nothing breaks pre-launch.
+const CORS_BASE = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-App-Token",
   "Access-Control-Max-Age": "86400",
 };
 
-function withCors(resp) {
+function allowOrigin(request, env) {
+  const origin = request.headers.get("Origin") || "";
+  const list = (env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (list.length === 0) return "*"; // not configured yet — set ALLOWED_ORIGINS before launch
+  if (origin && list.includes(origin)) return origin; // known origin: echo it
+  return list[0]; // configured: never echo an unknown origin
+}
+
+function corsHeaders(request, env) {
+  const h = new Headers(CORS_BASE);
+  h.set("Access-Control-Allow-Origin", allowOrigin(request, env));
+  h.set("Vary", "Origin");
+  return h;
+}
+
+function withCors(resp, request, env) {
   const headers = new Headers(resp.headers);
-  for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
+  corsHeaders(request, env).forEach((v, k) => headers.set(k, v));
   return new Response(resp.body, { status: resp.status, headers });
+}
+
+// Coarse per-IP fixed-window rate limit (KV). Caps runaway abuse of the paid
+// upstreams since the app token is necessarily public in a client-only app.
+async function rateLimited(request, env) {
+  if (!env.STATS) return false;
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const windowSec = 60;
+  const limit = parseInt(env.RATE_LIMIT_PER_MIN || "40", 10) || 40;
+  const bucket = Math.floor(Date.now() / 1000 / windowSec);
+  const key = `rl:${ip}:${bucket}`;
+  const count = parseInt((await env.STATS.get(key)) || "0", 10) || 0;
+  if (count >= limit) return true;
+  await env.STATS.put(key, String(count + 1), { expirationTtl: windowSec * 2 });
+  return false;
 }
 
 export default {
   async fetch(request, env, ctx) {
     // Preflight: browsers send OPTIONS before a POST with custom headers.
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      return new Response(null, { status: 204, headers: corsHeaders(request, env) });
     }
 
     if (request.method !== "POST") {
-      return withCors(new Response("Not found", { status: 404 }));
+      return withCors(new Response("Not found", { status: 404 }), request, env);
     }
 
     const url = new URL(request.url);
@@ -40,29 +73,34 @@ export default {
       path !== "/track" &&
       path !== "/feedback"
     ) {
-      return withCors(new Response("Not found", { status: 404 }));
+      return withCors(new Response("Not found", { status: 404 }), request, env);
     }
 
     // Only our app (with the token) may use the proxy.
     const token = request.headers.get("X-App-Token");
     if (!token || token !== env.APP_TOKEN) {
-      return withCors(new Response("Unauthorized", { status: 401 }));
+      return withCors(new Response("Unauthorized", { status: 401 }), request, env);
+    }
+
+    // Throttle abuse of the paid endpoints.
+    if (await rateLimited(request, env)) {
+      return withCors(new Response("Rate limited", { status: 429 }), request, env);
     }
 
     if (path === "/track") {
-      return withCors(await handleTrack(request, env, ctx));
+      return withCors(await handleTrack(request, env, ctx), request, env);
     }
 
     if (path === "/tts") {
-      return withCors(await handleTTS(request, env));
+      return withCors(await handleTTS(request, env), request, env);
     }
 
     if (path === "/stt") {
-      return withCors(await handleSTT(request, env));
+      return withCors(await handleSTT(request, env), request, env);
     }
 
     if (path === "/feedback") {
-      return withCors(await handleFeedback(request, env, ctx));
+      return withCors(await handleFeedback(request, env, ctx), request, env);
     }
 
     // Forward the body the app built straight to Gemini.
@@ -79,7 +117,7 @@ export default {
     return withCors(new Response(resp.body, {
       status: resp.status,
       headers: { "Content-Type": "application/json" },
-    }));
+    }), request, env);
   },
 };
 

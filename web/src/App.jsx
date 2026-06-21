@@ -3,6 +3,7 @@ import { SCENARIOS, resolveScenario } from "./scenarios.js";
 import { useIsDesktop } from "./useIsDesktop.js";
 import Challenge from "./Challenge.jsx";
 import Result from "./Result.jsx";
+import PrivacyPolicy from "./PrivacyPolicy.jsx";
 
 export default function App() {
   const [route, setRoute] = useState({ name: "home" });
@@ -110,6 +111,7 @@ function HeroIntro() {
 /* ---- Home ---- */
 
 function Home({ onOpen }) {
+  const [showPrivacy, setShowPrivacy] = useState(false);
   return (
     <div className="app-shell">
       <div className="screen">
@@ -117,7 +119,16 @@ function Home({ onOpen }) {
         <div className="scenario-grid">
           {SCENARIOS.map((s) => <ScenarioCard key={s.id} s={s} onOpen={onOpen} />)}
         </div>
+        <div className="spacer" />
+        <button
+          className="df-micro"
+          style={{ background: "none", border: "none", cursor: "pointer", alignSelf: "center" }}
+          onClick={() => setShowPrivacy(true)}
+        >
+          privacy
+        </button>
       </div>
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 }

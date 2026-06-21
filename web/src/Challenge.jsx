@@ -303,6 +303,11 @@ export default function Challenge({ scenario, onFinish, onExit, isDesktop }) {
         {transcriptEl}
         {errorEl}
         {inputEl}
+        {supportsVoice && phase !== "finished" && (
+          <div className="df-micro" style={{ textAlign: "center", opacity: 0.7 }}>
+            🎙 voice is transcribed by OpenAI
+          </div>
+        )}
       </div>
     </div>
   );
