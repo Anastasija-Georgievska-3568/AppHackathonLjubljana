@@ -338,6 +338,56 @@ body {
   }
 }
 
+/* ---- feedback modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 13, 13, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+  overflow-y: auto;
+}
+.modal-card {
+  background: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+}
+.rating-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.rating-dot {
+  flex: 1;
+  appearance: none;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 10px 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.rating-dot.on {
+  background: var(--accent);
+  color: #fff;
+}
+.rating-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .callout {
   align-self: center;
   background: var(--accent3);

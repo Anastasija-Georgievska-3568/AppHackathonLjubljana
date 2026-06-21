@@ -37,7 +37,8 @@ export default {
       path !== "/verdict" &&
       path !== "/tts" &&
       path !== "/stt" &&
-      path !== "/track"
+      path !== "/track" &&
+      path !== "/feedback"
     ) {
       return withCors(new Response("Not found", { status: 404 }));
     }
@@ -58,6 +59,10 @@ export default {
 
     if (path === "/stt") {
       return withCors(await handleSTT(request, env));
+    }
+
+    if (path === "/feedback") {
+      return withCors(await handleFeedback(request, env, ctx));
     }
 
     // Forward the body the app built straight to Gemini.
@@ -107,6 +112,60 @@ async function handleTrack(request, env, ctx) {
   // Don't make the user wait on the write.
   if (ctx?.waitUntil) ctx.waitUntil(work);
   else await work;
+
+  return new Response(null, { status: 204 });
+}
+
+// Beta feedback. The web client POSTs a small JSON survey. We append a row to a
+// Google Sheet (via an Apps Script webhook in FEEDBACK_WEBHOOK_URL) AND keep a
+// copy in KV as a safety net. If the webhook isn't configured yet, KV-only.
+async function handleFeedback(request, env, ctx) {
+  let p = {};
+  try {
+    p = await request.json();
+  } catch {
+    return new Response("Bad JSON", { status: 400 });
+  }
+
+  const clampRating = (v) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? Math.max(0, Math.min(5, n)) : 0;
+  };
+  const row = {
+    ts: new Date().toISOString(),
+    relevance: clampRating(p.relevance),
+    coachUsefulness: clampRating(p.coachUsefulness),
+    repeatIntent: clampRating(p.repeatIntent),
+    nativePref: String(p.nativePref || "").slice(0, 8),
+    nativeLanguage: String(p.nativeLanguage || "").slice(0, 40),
+    text: String(p.text || "").slice(0, 2000),
+    email: String(p.email || "").slice(0, 200),
+    deviceId: String(p.deviceId || "").slice(0, 64),
+    scenario: String(p.scenario || "").slice(0, 40),
+    persona: String(p.persona || "").slice(0, 60),
+    score: String(p.score ?? "").slice(0, 8),
+    band: String(p.band || "").slice(0, 20),
+    userAgent: String(p.userAgent || "").slice(0, 300),
+  };
+
+  const work = [];
+  if (env.FEEDBACK_WEBHOOK_URL) {
+    work.push(
+      fetch(env.FEEDBACK_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(row),
+      }).catch(() => {})
+    );
+  }
+  if (env.STATS) {
+    work.push(env.STATS.put(`feedback:${row.ts}:${row.deviceId}`, JSON.stringify(row)));
+    work.push(incr(env.STATS, "count:feedback:total"));
+  }
+
+  const all = Promise.all(work);
+  if (ctx?.waitUntil) ctx.waitUntil(all);
+  else await all;
 
   return new Response(null, { status: 204 });
 }

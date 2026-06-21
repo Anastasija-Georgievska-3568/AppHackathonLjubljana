@@ -1,7 +1,28 @@
+import { useEffect, useState } from "react";
+import FeedbackModal from "./FeedbackModal.jsx";
+import { markCompletedRun, shouldAutoPrompt, markPrompted } from "./feedback.js";
+
 export default function Result({ result, onReplay, onHome }) {
   const { verdict } = result;
   const score = verdict.finalScore ?? 0;
   const band = verdict.band || "";
+
+  const [showFeedback, setShowFeedback] = useState(false);
+  useEffect(() => {
+    const runs = markCompletedRun();
+    if (shouldAutoPrompt(runs)) {
+      markPrompted();
+      setShowFeedback(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const feedbackContext = {
+    scenario: result.scenario?.id || "",
+    persona: result.scenario?.personaLabel || "",
+    score,
+    band,
+  };
   const tierColor =
     score >= 80
       ? "var(--accent)"
@@ -70,6 +91,13 @@ export default function Result({ result, onReplay, onHome }) {
         <button className="btn ghost block" onClick={onReplay}>Run it back</button>
         <button className="btn ghost block" onClick={onHome}>Home</button>
       </div>
+      <button
+        className="df-micro"
+        style={{ background: "none", border: "none", cursor: "pointer", marginTop: 4 }}
+        onClick={() => setShowFeedback(true)}
+      >
+        💬 give beta feedback
+      </button>
     </>
   );
 
@@ -83,6 +111,9 @@ export default function Result({ result, onReplay, onHome }) {
         <div className="spacer" />
         {actions}
       </div>
+      {showFeedback && (
+        <FeedbackModal context={feedbackContext} onClose={() => setShowFeedback(false)} />
+      )}
     </div>
   );
 }
