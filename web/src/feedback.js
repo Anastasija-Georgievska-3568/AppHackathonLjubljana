@@ -1,6 +1,8 @@
-// Beta feedback funnel — anonymous, no login.
-// Posts a short survey to the worker (which forwards to a Google Sheet) and uses
-// localStorage to identify the device and to never re-prompt after submit/dismiss.
+// Feedback funnel — anonymous, no login.
+// Posts a short survey to the worker (which forwards to a Google Sheet). Uses
+// localStorage to identify the device, and sessionStorage to suppress the
+// auto-prompt after the user submits — so the funnel reliably re-appears in a
+// fresh session instead of being permanently silenced by a stale flag.
 
 const PROXY_BASE = import.meta.env.DEV
   ? "/proxy"
@@ -12,11 +14,19 @@ const APP_TOKEN =
 
 const K_DEVICE = "df_device_id";
 const K_RUNS = "df_runs_completed";
-const K_DONE = "df_feedback_done"; // user submitted feedback
+const K_DONE = "df_feedback_done"; // user submitted feedback (this session)
 
 function ls() {
   try {
     return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function ss() {
+  try {
+    return window.sessionStorage;
   } catch {
     return null;
   }
@@ -44,16 +54,18 @@ export function markCompletedRun() {
   return n;
 }
 
+// Session-scoped so a fresh visit always gets the funnel again; only suppresses
+// re-prompting within the same browser session after a submit.
 export function feedbackDone() {
-  return ls()?.getItem(K_DONE) === "1";
+  return ss()?.getItem(K_DONE) === "1";
 }
 export function markDone() {
-  ls()?.setItem(K_DONE, "1");
+  ss()?.setItem(K_DONE, "1");
 }
 
 // True when we should auto-open the prompt: at least one completed run and the
-// user hasn't already submitted feedback. We re-offer on each verdict (until
-// they submit) rather than only once per device.
+// user hasn't submitted feedback in this session. We re-offer 10s after each
+// verdict (until they submit) rather than only once per device.
 export function shouldAutoPrompt(runCount) {
   return runCount >= 1 && !feedbackDone();
 }

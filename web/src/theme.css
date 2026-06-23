@@ -616,7 +616,7 @@ body {
   }
 }
 
-/* Beta feedback CTA — gently floats up and down to catch the eye. */
+/* Feedback CTA — gently floats up and down to catch the eye. */
 .feedback-cta {
   display: inline-block;
   margin: 4px auto 0;

@@ -112,7 +112,7 @@ export default function Result({ result, onReplay, onHome }) {
         className="feedback-cta"
         onClick={() => setShowFeedback(true)}
       >
-        💬 give beta feedback
+        💬 give feedback
       </button>
     </>
   );
