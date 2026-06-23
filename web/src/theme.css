@@ -228,6 +228,32 @@ body {
   cursor: not-allowed;
 }
 
+/* ---- "not sure where to start?" nudge ---- */
+.start-here {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-self: center;
+  margin-top: 14px;
+  padding: 10px 16px;
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--accent);
+  background: var(--accent3);
+  transition: transform 0.12s ease;
+}
+.start-here:hover {
+  transform: translateY(-1px);
+}
+.start-here .df-micro {
+  color: var(--accent);
+}
+.start-here .df-body {
+  font-weight: 700;
+  color: var(--ink);
+}
+
 /* ---- persona grid ---- */
 .persona-grid {
   display: grid;

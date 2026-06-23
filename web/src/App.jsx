@@ -119,6 +119,15 @@ function Home({ onOpen }) {
         <div className="scenario-grid">
           {SCENARIOS.map((s) => <ScenarioCard key={s.id} s={s} onOpen={onOpen} />)}
         </div>
+        <a
+          className="start-here"
+          href="https://dontfold-landing.pages.dev/blog/the-raise-script"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="df-micro">NOT SURE WHERE TO START?</span>
+          <span className="df-body">Read the 5-step playbook →</span>
+        </a>
         <div className="spacer" />
         <button
           className="df-micro"

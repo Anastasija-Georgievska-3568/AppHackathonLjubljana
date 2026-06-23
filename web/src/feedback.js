@@ -12,7 +12,6 @@ const APP_TOKEN =
 
 const K_DEVICE = "df_device_id";
 const K_RUNS = "df_runs_completed";
-const K_PROMPTED = "df_feedback_prompted"; // auto-prompt has been shown once
 const K_DONE = "df_feedback_done"; // user submitted feedback
 
 function ls() {
@@ -45,12 +44,6 @@ export function markCompletedRun() {
   return n;
 }
 
-export function feedbackPrompted() {
-  return ls()?.getItem(K_PROMPTED) === "1";
-}
-export function markPrompted() {
-  ls()?.setItem(K_PROMPTED, "1");
-}
 export function feedbackDone() {
   return ls()?.getItem(K_DONE) === "1";
 }
@@ -58,10 +51,11 @@ export function markDone() {
   ls()?.setItem(K_DONE, "1");
 }
 
-// True when we should auto-open the prompt: first completed run, not already
-// prompted, not already submitted.
+// True when we should auto-open the prompt: at least one completed run and the
+// user hasn't already submitted feedback. We re-offer on each verdict (until
+// they submit) rather than only once per device.
 export function shouldAutoPrompt(runCount) {
-  return runCount >= 1 && !feedbackPrompted() && !feedbackDone();
+  return runCount >= 1 && !feedbackDone();
 }
 
 export async function submitFeedback(payload) {

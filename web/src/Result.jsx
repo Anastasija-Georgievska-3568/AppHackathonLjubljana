@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import FeedbackModal from "./FeedbackModal.jsx";
-import { markCompletedRun, shouldAutoPrompt, markPrompted } from "./feedback.js";
+import { markCompletedRun, shouldAutoPrompt } from "./feedback.js";
 
 export default function Result({ result, onReplay, onHome }) {
   const { verdict } = result;
@@ -17,7 +17,6 @@ export default function Result({ result, onReplay, onHome }) {
     const open = () => {
       if (opened) return;
       opened = true;
-      markPrompted();
       setShowFeedback(true);
       cleanup();
     };
